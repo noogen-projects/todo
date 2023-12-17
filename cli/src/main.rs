@@ -1,9 +1,9 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 
-use anyhow::Context;
 use clap::{Parser, Subcommand};
 use todo_app::config::{Config, ConfigLoader};
-use todo_tracker_fs::config::{find_projects, Load, ProjectsConfig};
+use todo_tracker_fs::config::find_projects;
 use todo_tracker_fs::tracker::FsTracker;
 
 #[derive(Parser)]
@@ -79,14 +79,23 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn open_tracker(config: &Config) -> anyhow::Result<FsTracker> {
-    let projects = find_projects::<String>(&config.project_search_dirs, &config.project_config_file);
-    let mut projects_config = if config.projects_config_file.exists() {
-        ProjectsConfig::load(&config.projects_config_file)
-            .with_context(|| config.projects_config_file.display().to_string())?
-    } else {
-        ProjectsConfig::default()
-    };
-    projects_config.projects.extend(projects);
+    let mut projects = HashMap::new();
 
-    Ok(FsTracker::new(projects_config))
+    for (project_id, project_config) in &config.project {
+        if let Some(load_project_config_result) =
+            project_config.load_tracker_project_config(&config.project_config_file)
+        {
+            let loaded_project_config = load_project_config_result?;
+            projects.insert(project_id.clone(), loaded_project_config);
+        }
+    }
+
+    if config.project_search.enabled {
+        projects.extend(find_projects::<String>(
+            &config.project_search.dirs,
+            &config.project_config_file,
+        ));
+    }
+
+    Ok(FsTracker::new(projects))
 }

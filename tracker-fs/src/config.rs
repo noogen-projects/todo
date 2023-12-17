@@ -1,29 +1,20 @@
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
+use std::io;
 use std::path::{Path, PathBuf};
-use std::{fs, io};
 
+use fs_err as fs;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use walkdir::WalkDir;
 
 #[derive(Debug, Error)]
 pub enum LoadConfigError {
-    #[error("Fail to read: {0}")]
+    #[error("{0}")]
     FailToRead(#[from] io::Error),
 
     #[error("Fail to deserialize: {0}")]
     FailToDeserialize(#[from] toml::de::Error),
-}
-
-pub trait Load
-where
-    Self: for<'a> Deserialize<'a>,
-{
-    fn load(path: impl AsRef<Path>) -> Result<Self, LoadConfigError> {
-        let content = fs::read_to_string(path)?;
-        Ok(toml::from_str(&content)?)
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -37,15 +28,13 @@ pub struct ProjectConfig<ID: Hash + Eq = String> {
     pub projects: HashSet<ID>,
 }
 
-impl<ID: for<'a> Deserialize<'a> + Hash + Eq> Load for ProjectConfig<ID> {}
-
-#[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct ProjectsConfig<ID: Hash + Eq = String> {
-    pub projects: HashMap<ID, ProjectConfig<ID>>,
+impl<ID: for<'a> Deserialize<'a> + Hash + Eq> ProjectConfig<ID> {
+    pub fn load(path: impl AsRef<Path>) -> Result<Self, LoadConfigError> {
+        let path = path.as_ref();
+        let content = fs::read_to_string(path)?;
+        Ok(toml::from_str(&content)?)
+    }
 }
-
-impl<ID: for<'a> Deserialize<'a> + Hash + Eq> Load for ProjectsConfig<ID> {}
 
 pub fn find_projects<ID: for<'a> Deserialize<'a> + Hash + Eq + Clone>(
     search_roots: impl IntoIterator<Item = impl AsRef<Path>>,

@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use todo_lib::project::Project;
 
-use crate::config::ProjectsConfig;
+use crate::config::ProjectConfig;
 use crate::project::load_project;
 
 pub struct FsTracker<PID = String> {
@@ -14,16 +14,16 @@ pub struct FsTracker<PID = String> {
 }
 
 impl<PID: Clone + Hash + Eq> FsTracker<PID> {
-    pub fn new(projects_config: ProjectsConfig<PID>) -> Self {
+    pub fn new(project_configs: HashMap<PID, ProjectConfig<PID>>) -> Self {
         let mut projects = HashMap::new();
         let mut paths = HashMap::new();
         let mut parents = HashMap::new();
 
-        for (parent_id, config) in &projects_config.projects {
+        for (parent_id, config) in &project_configs {
             parents.extend(config.projects.iter().cloned().map(|id| (id, parent_id.clone())));
         }
 
-        for (id, config) in projects_config.projects {
+        for (id, config) in project_configs {
             if let Some(path) = config.path.clone() {
                 paths.insert(id.clone(), path);
             }
@@ -40,6 +40,10 @@ impl<PID: Clone + Hash + Eq> FsTracker<PID> {
 
     pub fn projects(&self) -> &HashMap<PID, Project<PID>> {
         &self.projects
+    }
+
+    pub fn parents(&self) -> &HashMap<PID, PID> {
+        &self.parents
     }
 
     pub fn path(&self, id: &PID) -> Option<&Path> {

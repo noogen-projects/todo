@@ -1,3 +1,4 @@
+use std::collections::{HashMap, HashSet};
 use std::env;
 use std::env::VarError;
 use std::path::{Path, PathBuf};
@@ -5,35 +6,90 @@ use std::path::{Path, PathBuf};
 pub use config::ConfigError;
 use config::{Environment, File};
 use serde::{Deserialize, Serialize};
+use todo_tracker_fs::config::{LoadConfigError, ProjectConfig as TrackerProjectConfig};
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(default)]
+pub struct ProjectSearchConfig {
+    #[serde(default = "ProjectSearchConfig::default_enabled")]
+    pub enabled: bool,
+
+    pub dirs: Vec<PathBuf>,
+}
+
+impl Default for ProjectSearchConfig {
+    fn default() -> Self {
+        Self {
+            enabled: Self::default_enabled(),
+            dirs: Default::default(),
+        }
+    }
+}
+
+impl ProjectSearchConfig {
+    pub const fn default_enabled() -> bool {
+        true
+    }
+}
+
+#[derive(Debug, Default, Deserialize, Serialize)]
+#[serde(default)]
+pub struct ProjectConfig {
+    pub path: Option<PathBuf>,
+
+    pub projects: HashSet<String>,
+}
+
+impl ProjectConfig {
+    pub fn load_tracker_project_config(
+        &self,
+        project_config_file_name: impl AsRef<Path>,
+    ) -> Option<Result<TrackerProjectConfig, LoadConfigError>> {
+        let project_path = self.path.as_ref()?;
+        let project_config_file_path = if project_path.is_dir() {
+            project_path.join(project_config_file_name)
+        } else {
+            project_path.clone()
+        };
+
+        match TrackerProjectConfig::load(project_config_file_path) {
+            Ok(mut config) => {
+                config.path = Some(project_path.clone());
+                if !self.projects.is_empty() {
+                    config.projects = self.projects.clone();
+                }
+                Some(Ok(config))
+            },
+            Err(err) => Some(Err(err)),
+        }
+    }
+}
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(default)]
 pub struct Config {
-    #[serde(default = "projects_config_file_default")]
-    pub projects_config_file: PathBuf,
-
-    #[serde(default = "project_config_file_default")]
+    #[serde(default = "Config::default_project_config_file")]
     pub project_config_file: PathBuf,
 
-    pub project_search_dirs: Vec<PathBuf>,
+    pub project_search: ProjectSearchConfig,
+
+    pub project: HashMap<String, ProjectConfig>,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
-            projects_config_file: projects_config_file_default(),
-            project_config_file: project_config_file_default(),
-            project_search_dirs: Default::default(),
+            project_config_file: Self::default_project_config_file(),
+            project_search: Default::default(),
+            project: Default::default(),
         }
     }
 }
 
-fn projects_config_file_default() -> PathBuf {
-    "projects.toml".into()
-}
-
-fn project_config_file_default() -> PathBuf {
-    "Project.toml".into()
+impl Config {
+    pub fn default_project_config_file() -> PathBuf {
+        "Project.toml".into()
+    }
 }
 
 #[derive(Debug, Default)]
@@ -154,7 +210,7 @@ impl ConfigLoader {
             config_builder.add_path(&root_config_file);
         }
 
-        let mut project_dir = project_dir.map(Ok).unwrap_or_else(|| env::current_dir())?;
+        let mut project_dir = project_dir.map(Ok).unwrap_or_else(env::current_dir)?;
         let mut config_file = config_file.unwrap_or_else(|| project_dir.join(&config_file_name));
 
         if !config_file.exists() {
