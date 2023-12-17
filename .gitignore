@@ -1,0 +1,11 @@
+**/target/
+Cargo.lock
+
+TODO.*
+Project.toml
+todo.toml
+notes.md
+
+.idea
+*.iml
+**/.vscode
