@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-
+use indexmap::IndexMap;
 use todo_tracker_fs::config::{find_projects, LoadConfigError};
 use todo_tracker_fs::FsTracker;
 
@@ -9,7 +8,7 @@ pub mod config;
 pub mod project;
 
 pub fn open_tracker(config: &Config) -> Result<FsTracker, LoadConfigError> {
-    let mut projects = HashMap::new();
+    let mut projects = IndexMap::new();
 
     for (project_id, project_config) in &config.project {
         if let Some(load_project_config_result) =

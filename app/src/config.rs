@@ -1,10 +1,10 @@
-use std::collections::{HashMap, HashSet};
 use std::env;
 use std::env::VarError;
 use std::path::{Path, PathBuf};
 
 pub use config::ConfigError;
 use config::{Environment, File};
+use indexmap::{IndexMap, IndexSet};
 use serde::{Deserialize, Serialize};
 use todo_tracker_fs::config::{LoadConfigError, ProjectConfig as TrackerProjectConfig};
 
@@ -37,7 +37,7 @@ impl ProjectSearchConfig {
 pub struct ProjectConfig {
     pub path: Option<PathBuf>,
 
-    pub projects: HashSet<String>,
+    pub projects: IndexSet<String>,
 }
 
 impl ProjectConfig {
@@ -73,7 +73,8 @@ pub struct Config {
 
     pub project_search: ProjectSearchConfig,
 
-    pub project: HashMap<String, ProjectConfig>,
+    // #[serde(with = "indexmap::map::serde_seq")]
+    pub project: IndexMap<String, ProjectConfig>,
 }
 
 impl Default for Config {

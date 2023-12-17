@@ -2,20 +2,21 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use std::path::{Path, PathBuf};
 
+use indexmap::IndexMap;
 use todo_lib::project::Project;
 
 use crate::config::ProjectConfig;
 use crate::project::load_project;
 
 pub struct FsTracker<PID = String> {
-    projects: HashMap<PID, Project<PID>>,
+    projects: IndexMap<PID, Project<PID>>,
     paths: HashMap<PID, PathBuf>,
     parents: HashMap<PID, PID>,
 }
 
 impl<PID: Clone + Hash + Eq> FsTracker<PID> {
-    pub fn new(project_configs: HashMap<PID, ProjectConfig<PID>>) -> Self {
-        let mut projects = HashMap::new();
+    pub fn new(project_configs: IndexMap<PID, ProjectConfig<PID>>) -> Self {
+        let mut projects = IndexMap::new();
         let mut paths = HashMap::new();
         let mut parents = HashMap::new();
 
@@ -38,7 +39,7 @@ impl<PID: Clone + Hash + Eq> FsTracker<PID> {
         }
     }
 
-    pub fn projects(&self) -> &HashMap<PID, Project<PID>> {
+    pub fn projects(&self) -> &IndexMap<PID, Project<PID>> {
         &self.projects
     }
 

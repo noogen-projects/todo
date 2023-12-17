@@ -1,9 +1,10 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::BTreeMap;
 use std::hash::Hash;
 use std::io;
 use std::path::{Path, PathBuf};
 
 use fs_err as fs;
+use indexmap::IndexSet;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use walkdir::WalkDir;
@@ -25,7 +26,7 @@ pub struct ProjectConfig<ID: Hash + Eq = String> {
     pub path: Option<PathBuf>,
     pub tags: Vec<String>,
     #[serde(default = "Default::default")]
-    pub projects: HashSet<ID>,
+    pub projects: IndexSet<ID>,
 }
 
 impl<ID: for<'a> Deserialize<'a> + Hash + Eq> ProjectConfig<ID> {
@@ -36,11 +37,11 @@ impl<ID: for<'a> Deserialize<'a> + Hash + Eq> ProjectConfig<ID> {
     }
 }
 
-pub fn find_projects<ID: for<'a> Deserialize<'a> + Hash + Eq + Clone>(
+pub fn find_projects<ID: for<'a> Deserialize<'a> + Hash + Eq + Ord + Clone>(
     search_roots: impl IntoIterator<Item = impl AsRef<Path>>,
     project_config_file: impl AsRef<Path>,
-) -> HashMap<ID, ProjectConfig<ID>> {
-    let mut projects = HashMap::new();
+) -> BTreeMap<ID, ProjectConfig<ID>> {
+    let mut projects = BTreeMap::new();
 
     for root in search_roots {
         for entry in WalkDir::new(root).follow_links(true).into_iter().filter_map(Result::ok) {

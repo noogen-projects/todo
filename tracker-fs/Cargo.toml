@@ -5,8 +5,9 @@ edition = "2021"
 
 [dependencies]
 fs-err = "2.11"
-serde = { version = "1.0", features = ["derive"] }
+indexmap = { workspace = true }
+serde = { workspace = true }
 thiserror = "1.0"
 todo-lib = { path = "../lib" }
-toml = "0.8"
+toml = { version = "0.8", features = ["preserve_order"] }
 walkdir = "2.4"

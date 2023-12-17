@@ -1,11 +1,11 @@
-use std::collections::HashSet;
+use indexmap::IndexSet;
 
 #[derive(Debug, Clone)]
 pub struct Project<ID> {
     id: ID,
     parent_id: Option<ID>,
     name: String,
-    subprojects: HashSet<ID>,
+    subprojects: IndexSet<ID>,
 }
 
 impl<ID> Project<ID> {
@@ -23,7 +23,7 @@ impl<ID> Project<ID> {
         self
     }
 
-    pub fn with_subprojects(mut self, subprojects: impl Into<HashSet<ID>>) -> Self {
+    pub fn with_subprojects(mut self, subprojects: impl Into<IndexSet<ID>>) -> Self {
         self.subprojects = subprojects.into();
         self
     }

@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-anyhow = "1.0"
-config = "0.13"
-serde = { version = "1.0", features = ["derive"] }
+anyhow = { workspace = true }
+config = { version = "0.13", features = ["preserve_order"] }
+indexmap = { workspace = true }
+serde = { workspace = true }
 todo-tracker-fs = { path = "../tracker-fs" }
