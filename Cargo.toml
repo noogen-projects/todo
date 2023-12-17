@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+members = [
+    "app",
+    "cli",
+    "lib",
+    "tracker-fs",
+]
+
+[profile.release]
+lto = true
+
+[workspace.dependencies]
