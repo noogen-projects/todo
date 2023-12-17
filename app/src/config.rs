@@ -143,9 +143,14 @@ pub struct ConfigLoader {
 impl Default for ConfigLoader {
     fn default() -> Self {
         let default_config_file_name = "todo.toml";
+        let root_config_file = home::home_dir()
+            .unwrap_or_default()
+            .join(".todo")
+            .join(default_config_file_name);
+
         Self {
             config_file_name: default_config_file_name.into(),
-            root_config_file: PathBuf::from("~").join(".todo").join(default_config_file_name),
+            root_config_file,
             config_file: None,
             project_dir: None,
         }

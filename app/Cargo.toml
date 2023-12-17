@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 anyhow = { workspace = true }
 config = { version = "0.13", features = ["preserve_order"] }
+home = "0.5"
 indexmap = { workspace = true }
 serde = { workspace = true }
 todo-tracker-fs = { path = "../tracker-fs" }
