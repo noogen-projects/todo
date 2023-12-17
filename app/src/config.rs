@@ -32,6 +32,27 @@ impl ProjectSearchConfig {
     }
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(default)]
+pub struct ProjectListConfig {
+    #[serde(default = "ProjectListConfig::default_enabled")]
+    pub enabled: bool,
+}
+
+impl Default for ProjectListConfig {
+    fn default() -> Self {
+        Self {
+            enabled: Self::default_enabled(),
+        }
+    }
+}
+
+impl ProjectListConfig {
+    pub const fn default_enabled() -> bool {
+        true
+    }
+}
+
 #[derive(Debug, Default, Deserialize, Serialize)]
 #[serde(default)]
 pub struct ProjectConfig {
@@ -73,7 +94,8 @@ pub struct Config {
 
     pub project_search: ProjectSearchConfig,
 
-    // #[serde(with = "indexmap::map::serde_seq")]
+    pub project_list: ProjectListConfig,
+
     pub project: IndexMap<String, ProjectConfig>,
 }
 
@@ -82,6 +104,7 @@ impl Default for Config {
         Self {
             project_config_file: Self::default_project_config_file(),
             project_search: Default::default(),
+            project_list: Default::default(),
             project: Default::default(),
         }
     }
