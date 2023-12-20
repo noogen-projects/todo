@@ -6,5 +6,6 @@ edition = "2021"
 [dependencies]
 anyhow = { workspace = true }
 clap = { version = "4.3", features = ["derive"] }
+indexmap = { workspace = true }
 todo-app = { path = "../app" }
 todo-tracker-fs = { path = "../tracker-fs" }

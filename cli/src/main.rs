@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
+use indexmap::{IndexMap, IndexSet};
 use todo_app::config::ConfigLoader;
 use todo_app::open_tracker;
 
@@ -54,12 +55,13 @@ fn main() -> anyhow::Result<()> {
         Command::Project(Cmd::List) => {
             let tracker = open_tracker(&profile.config)?;
 
+            let subprojects = tracker.subprojects();
             for project in tracker.projects().values() {
-                print!("{id} : {name}", id = project.id(), name = project.name());
-                if let Some(path) = tracker.path(project.id()) {
-                    println!("  {}", path.display());
-                } else {
-                    println!();
+                if project.parent_id().is_none() {
+                    println!("{id}", id = project.id());
+                    if let Some(children) = subprojects.get(project.id()) {
+                        print_subprojects(children, &subprojects, 1);
+                    }
                 }
             }
         },
@@ -74,4 +76,23 @@ fn main() -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+fn print_subprojects<'a>(
+    children: &IndexSet<String>,
+    subprojects: &'a IndexMap<String, IndexSet<String>>,
+    depth: usize,
+) {
+    for (idx, child_id) in children.iter().enumerate() {
+        for level in 0..depth {
+            print!("{}", if level == 0 { "  " } else { "│    " });
+        }
+
+        let connection = if idx + 1 == children.len() { "└─" } else { "├─" };
+        println!("{connection} {child_id}");
+
+        if let Some(children) = subprojects.get(child_id) {
+            print_subprojects(children, subprojects, depth + 1);
+        }
+    }
 }

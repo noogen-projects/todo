@@ -39,4 +39,8 @@ impl<ID> Project<ID> {
     pub fn name(&self) -> &str {
         &self.name
     }
+
+    pub fn parent_id(&self) -> Option<&ID> {
+        self.parent_id.as_ref()
+    }
 }
