@@ -86,9 +86,32 @@ impl ProjectConfig {
     }
 }
 
+#[derive(Copy, Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Title {
+    #[default]
+    Id,
+    Name,
+    IdName,
+}
+
+#[derive(Debug, Default, Deserialize, Serialize)]
+#[serde(default)]
+pub struct DisplayProjectConfig {
+    pub title: Title,
+}
+
+#[derive(Debug, Default, Deserialize, Serialize)]
+#[serde(default)]
+pub struct DisplayConfig {
+    pub project: DisplayProjectConfig,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(default)]
 pub struct Config {
+    pub display: DisplayConfig,
+
     #[serde(default = "Config::default_project_config_file")]
     pub project_config_file: PathBuf,
 
@@ -102,6 +125,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
+            display: Default::default(),
             project_config_file: Self::default_project_config_file(),
             project_search: Default::default(),
             project_list: Default::default(),

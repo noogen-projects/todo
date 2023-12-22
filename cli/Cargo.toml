@@ -8,4 +8,5 @@ anyhow = { workspace = true }
 clap = { version = "4.3", features = ["derive"] }
 indexmap = { workspace = true }
 todo-app = { path = "../app" }
+todo-lib = { path = "../lib" }
 todo-tracker-fs = { path = "../tracker-fs" }
