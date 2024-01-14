@@ -1,4 +1,7 @@
+use std::io;
+
 use indexmap::IndexMap;
+use thiserror::Error;
 use todo_tracker_fs::config::{find_projects, LoadConfigError};
 use todo_tracker_fs::FsTracker;
 
@@ -7,7 +10,16 @@ use crate::config::Config;
 pub mod config;
 pub mod project;
 
-pub fn open_tracker(config: &Config) -> Result<FsTracker, LoadConfigError> {
+#[derive(Debug, Error)]
+pub enum OpenTrackerError {
+    #[error("Fail to load config: {0}")]
+    LoadConfig(#[from] LoadConfigError),
+
+    #[error("Fail to create tracker: {0}")]
+    CreateTracker(#[from] io::Error),
+}
+
+pub fn open_tracker(config: &Config) -> Result<FsTracker, OpenTrackerError> {
     let mut projects = IndexMap::new();
 
     if config.project_list.enabled {
@@ -28,5 +40,5 @@ pub fn open_tracker(config: &Config) -> Result<FsTracker, LoadConfigError> {
         ));
     }
 
-    Ok(FsTracker::new(projects))
+    Ok(FsTracker::new(projects)?)
 }

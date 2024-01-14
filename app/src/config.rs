@@ -99,6 +99,7 @@ pub enum Title {
 #[serde(default)]
 pub struct DisplayProjectConfig {
     pub title: Title,
+    pub steps: usize,
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]

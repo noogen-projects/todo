@@ -25,6 +25,7 @@ pub struct ProjectConfig<ID: Hash + Eq = String> {
     pub desc: Option<String>,
     pub path: Option<PathBuf>,
     pub tags: Vec<String>,
+    pub start_id: Option<u64>,
     #[serde(default = "Default::default")]
     pub projects: IndexSet<ID>,
 }

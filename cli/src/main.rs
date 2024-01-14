@@ -4,7 +4,8 @@ use clap::{Parser, Subcommand};
 use indexmap::{IndexMap, IndexSet};
 use todo_app::config::{ConfigLoader, DisplayProjectConfig, Title};
 use todo_app::open_tracker;
-use todo_lib::project::Project;
+use todo_lib::issue::Step;
+use todo_tracker_fs::FsTracker;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -73,7 +74,7 @@ fn main() -> anyhow::Result<()> {
                     };
 
                     if let Some(children) = subprojects.get(project.id()) {
-                        print_subprojects(tracker.projects(), config, children, &subprojects, 1);
+                        print_subprojects(&tracker, config, children, &subprojects, 1);
                     }
                 }
             }
@@ -92,29 +93,29 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn print_subprojects(
-    projects: &IndexMap<String, Project<String>>,
+    tracker: &FsTracker,
     config: &DisplayProjectConfig,
     children: &IndexSet<String>,
     subprojects: &IndexMap<String, IndexSet<String>>,
     depth: usize,
 ) {
     for (idx, child_id) in children.iter().enumerate() {
+        let mut prefix = String::new();
         for level in 0..depth {
-            print!("{}", if level == 0 { "  " } else { "│    " });
+            prefix.push_str(if level == 0 { "  " } else { "│    " });
         }
+        print!("{prefix}");
 
         let connection = if idx + 1 == children.len() { "└─" } else { "├─" };
         print!("{connection} ");
 
+        let project = tracker.projects().get(child_id);
         match config.title {
             Title::Id => println!("{child_id}"),
-            Title::Name => println!(
-                "{}",
-                projects.get(child_id).map(|project| project.name()).unwrap_or(child_id)
-            ),
+            Title::Name => println!("{}", project.map(|project| project.name()).unwrap_or(child_id)),
             Title::IdName => {
                 print!("{child_id}");
-                let name = projects.get(child_id).map(|project| project.name()).unwrap_or_default();
+                let name = project.map(|project| project.name()).unwrap_or_default();
                 if !name.is_empty() {
                     print!(": {name}");
                 }
@@ -122,8 +123,53 @@ fn print_subprojects(
             },
         };
 
+        let display_steps = config.steps;
+        if display_steps > 0 {
+            if let Some(project) = project {
+                if let Some(project_issues) = tracker.project_issues(project.id()) {
+                    let print_prefix = || {
+                        if subprojects.get(child_id).is_some() {
+                            print!("{prefix}│    │ ");
+                        } else {
+                            print!("{prefix}│    ");
+                        }
+                    };
+
+                    let mut step_count = 0;
+                    for step in project_issues.steps() {
+                        match step {
+                            Step::Issue(id) => {
+                                if let Some(issue) = project_issues.get_issue(id) {
+                                    if issue.parent_id.is_none() {
+                                        if step_count < display_steps {
+                                            print_prefix();
+                                            println!("- {}", issue.name);
+                                        }
+                                        step_count += 1;
+                                    }
+                                }
+                            },
+                            Step::Milestone(id) => {
+                                if let Some(milestone) = project_issues.get_milestone(id) {
+                                    if step_count < display_steps {
+                                        print_prefix();
+                                        println!("# {}", milestone.name);
+                                    }
+                                    step_count += 1;
+                                }
+                            },
+                        }
+                    }
+                    if step_count > display_steps {
+                        print_prefix();
+                        println!("..{}", step_count - display_steps);
+                    }
+                }
+            }
+        }
+
         if let Some(children) = subprojects.get(child_id) {
-            print_subprojects(projects, config, children, subprojects, depth + 1);
+            print_subprojects(tracker, config, children, subprojects, depth + 1);
         }
     }
 }
