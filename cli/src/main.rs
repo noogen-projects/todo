@@ -32,10 +32,16 @@ enum Command {
     Project(Cmd),
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Clone)]
 enum Cmd {
-    Info,
-    List,
+    Info {
+        #[clap(short, long)]
+        project: Option<String>,
+    },
+    List {
+        #[clap(short, long)]
+        project: Option<String>,
+    },
     Add,
 }
 
@@ -53,12 +59,20 @@ fn main() -> anyhow::Result<()> {
         .expect("Wrong config structure");
 
     match command {
-        Command::Default(Cmd::List) | Command::Issue(Cmd::List) => {},
-        Command::Project(Cmd::List) => {
-            let tracker = open_tracker(&profile.config)?;
+        Command::Default(Cmd::List { project }) | Command::Issue(Cmd::List { project }) => {
+            if let Some(project) = project {
+                let tracker = open_tracker(&profile.config)?;
 
+                if let Some(project) = tracker.projects().get(&project) {
+                    print_steps(&tracker, project.id(), Default::default, None, true);
+                }
+            }
+        },
+        Command::Project(cmd @ Cmd::Info { .. } | cmd @ Cmd::List { .. }) => {
+            let tracker = open_tracker(&profile.config)?;
             let config = &profile.config.display.project;
             let subprojects = tracker.subprojects();
+
             for project in tracker.projects().values() {
                 if project.parent_id().is_none() {
                     let title = if matches!(config.title, Title::IdName) && project.name().is_empty() {
@@ -74,12 +88,19 @@ fn main() -> anyhow::Result<()> {
                     };
 
                     if let Some(children) = subprojects.get(project.id()) {
-                        print_subprojects(&tracker, config, children, &subprojects, 1);
+                        print_subprojects(
+                            &tracker,
+                            config,
+                            children,
+                            &subprojects,
+                            1,
+                            matches!(cmd, Cmd::Info { .. }),
+                        );
                     }
                 }
             }
         },
-        Command::Default(Cmd::Info) => {
+        Command::Default(Cmd::Info { .. }) => {
             let tracker = open_tracker(&profile.config)?;
 
             for project in tracker.projects().values() {
@@ -92,12 +113,68 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+fn print_steps(
+    tracker: &FsTracker,
+    project_id: &String,
+    print_prefix: impl Fn() -> (),
+    max_count: Option<usize>,
+    display_substeps: bool,
+) {
+    let max_count = max_count.unwrap_or(usize::MAX);
+    if let Some(project_issues) = tracker.project_issues(project_id) {
+        let mut parent_ids = Vec::new();
+
+        let mut step_count = 0;
+        let mut print_line = |level, text| {
+            if step_count < max_count {
+                print_prefix();
+                println!("{:1$}{text}", "", level * 2);
+            }
+            step_count += 1;
+        };
+
+        for step in project_issues.steps() {
+            match step {
+                Step::Issue(id) => {
+                    if let Some(issue) = project_issues.get_issue(id) {
+                        if let Some(parent_id) = issue.parent_id {
+                            if display_substeps {
+                                loop {
+                                    if Some(parent_id) == parent_ids.last().copied() || parent_ids.pop().is_none() {
+                                        break;
+                                    }
+                                }
+
+                                print_line(parent_ids.len() + 1, format!("- {}", issue.name));
+                                parent_ids.push(issue.id);
+                            }
+                        } else {
+                            print_line(0, format!("- {}", issue.name));
+                            parent_ids.clear();
+                        }
+                    }
+                },
+                Step::Milestone(id) => {
+                    if let Some(milestone) = project_issues.get_milestone(id) {
+                        print_line(0, format!("# {}", milestone.name));
+                    }
+                },
+            }
+        }
+        if step_count > max_count {
+            print_prefix();
+            println!("..{}", step_count - max_count);
+        }
+    }
+}
+
 fn print_subprojects(
     tracker: &FsTracker,
     config: &DisplayProjectConfig,
     children: &IndexSet<String>,
     subprojects: &IndexMap<String, IndexSet<String>>,
     depth: usize,
+    display_steps: bool,
 ) {
     for (idx, child_id) in children.iter().enumerate() {
         let mut prefix = String::new();
@@ -123,53 +200,27 @@ fn print_subprojects(
             },
         };
 
-        let display_steps = config.steps;
-        if display_steps > 0 {
+        let steps_max_count = display_steps.then(|| config.steps).unwrap_or(0);
+        if steps_max_count > 0 {
             if let Some(project) = project {
-                if let Some(project_issues) = tracker.project_issues(project.id()) {
-                    let print_prefix = || {
+                print_steps(
+                    tracker,
+                    project.id(),
+                    || {
                         if subprojects.get(child_id).is_some() {
                             print!("{prefix}│    │ ");
                         } else {
                             print!("{prefix}│    ");
                         }
-                    };
-
-                    let mut step_count = 0;
-                    for step in project_issues.steps() {
-                        match step {
-                            Step::Issue(id) => {
-                                if let Some(issue) = project_issues.get_issue(id) {
-                                    if issue.parent_id.is_none() {
-                                        if step_count < display_steps {
-                                            print_prefix();
-                                            println!("- {}", issue.name);
-                                        }
-                                        step_count += 1;
-                                    }
-                                }
-                            },
-                            Step::Milestone(id) => {
-                                if let Some(milestone) = project_issues.get_milestone(id) {
-                                    if step_count < display_steps {
-                                        print_prefix();
-                                        println!("# {}", milestone.name);
-                                    }
-                                    step_count += 1;
-                                }
-                            },
-                        }
-                    }
-                    if step_count > display_steps {
-                        print_prefix();
-                        println!("..{}", step_count - display_steps);
-                    }
-                }
+                    },
+                    Some(steps_max_count),
+                    false,
+                );
             }
         }
 
         if let Some(children) = subprojects.get(child_id) {
-            print_subprojects(tracker, config, children, subprojects, depth + 1);
+            print_subprojects(tracker, config, children, subprojects, depth + 1, display_steps);
         }
     }
 }
