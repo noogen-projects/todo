@@ -64,7 +64,7 @@ fn main() -> anyhow::Result<()> {
                 let tracker = open_tracker(&profile.config)?;
 
                 if let Some(project) = tracker.projects().get(&project) {
-                    print_steps(&tracker, project.id(), Default::default, None, true);
+                    print_steps(&tracker, project.id(), Default::default, None, true, false);
                 }
             }
         },
@@ -119,13 +119,14 @@ fn print_steps(
     print_prefix: impl Fn() -> (),
     max_count: Option<usize>,
     display_substeps: bool,
+    compact: bool,
 ) {
     let max_count = max_count.unwrap_or(usize::MAX);
     if let Some(project_issues) = tracker.project_issues(project_id) {
         let mut parent_ids = Vec::new();
 
         let mut step_count = 0;
-        let mut print_line = |level, text| {
+        let mut print_line = |level, text: &str| {
             if step_count < max_count {
                 print_prefix();
                 println!("{:1$}{text}", "", level * 2);
@@ -145,18 +146,24 @@ fn print_steps(
                                     }
                                 }
 
-                                print_line(parent_ids.len() + 1, format!("- {}", issue.name));
+                                print_line(parent_ids.len() + 1, &format!("- {}", issue.name));
                                 parent_ids.push(issue.id);
                             }
                         } else {
-                            print_line(0, format!("- {}", issue.name));
+                            print_line(0, &format!("- {}", issue.name));
                             parent_ids.clear();
                         }
                     }
                 },
                 Step::Milestone(id) => {
                     if let Some(milestone) = project_issues.get_milestone(id) {
-                        print_line(0, format!("# {}", milestone.name));
+                        if !compact {
+                            print_line(0, "");
+                        }
+                        print_line(0, &format!("# {}", milestone.name));
+                        if !compact {
+                            print_line(0, "");
+                        }
                     }
                 },
             }
@@ -215,6 +222,7 @@ fn print_subprojects(
                     },
                     Some(steps_max_count),
                     false,
+                    true,
                 );
             }
         }
