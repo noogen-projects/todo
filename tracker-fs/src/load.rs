@@ -5,7 +5,8 @@ use std::str::FromStr;
 
 use fs_err as fs;
 use indexmap::IndexMap;
-use todo_lib::issue::{Issue, PlannedIssues};
+use todo_lib::issue::Issue;
+use todo_lib::plan::Plan;
 use todo_lib::project::Project;
 
 use self::parse::Item;
@@ -22,10 +23,7 @@ pub fn project<ID: Hash + Eq>(id: ID, parent: Option<ID>, config: ProjectConfig<
     project
 }
 
-pub fn project_planned_issues<ID, GEN>(
-    project_root: impl AsRef<Path>,
-    id_generator: GEN,
-) -> Option<io::Result<PlannedIssues<ID>>>
+pub fn project_plan<ID, GEN>(project_root: impl AsRef<Path>, id_generator: GEN) -> Option<io::Result<Plan<ID>>>
 where
     ID: Hash + Eq + Clone + FromStr,
     GEN: IdGenerator<Id = ID> + Copy,
@@ -34,22 +32,22 @@ where
     if path.exists() {
         Some(
             fs::File::open(path)
-                .and_then(|file| planned_issues_from_lines(io::BufReader::new(file).lines().enumerate(), id_generator)),
+                .and_then(|file| plan_from_lines(io::BufReader::new(file).lines().enumerate(), id_generator)),
         )
     } else {
         None
     }
 }
 
-pub fn planned_issues_from_lines<ID, GEN>(
+pub fn plan_from_lines<ID, GEN>(
     lines: impl IntoIterator<Item = (usize, io::Result<String>)>,
     id_generator: GEN,
-) -> io::Result<PlannedIssues<ID>>
+) -> io::Result<Plan<ID>>
 where
     ID: Hash + Eq + Clone + FromStr,
     GEN: IdGenerator<Id = ID> + Copy,
 {
-    let mut planned = PlannedIssues::<ID>::new();
+    let mut planned = Plan::<ID>::new();
     let mut last = Last::<ID>::new();
 
     for (line_idx, line) in lines {

@@ -1,4 +1,4 @@
-use indexmap::{IndexMap, IndexSet};
+use indexmap::IndexSet;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum LinkType {
@@ -78,64 +78,6 @@ impl<ID> Milestone<ID> {
             id,
             name: name.into(),
             needed_issues: Default::default(),
-        }
-    }
-}
-
-#[derive(Eq, Hash, PartialEq)]
-pub enum Step<ID> {
-    Issue(ID),
-    Milestone(ID),
-}
-
-#[derive(Default)]
-pub struct Plan<ID> {
-    pub steps: IndexSet<Step<ID>>,
-}
-
-#[derive(Default)]
-pub struct PlannedIssues<ID> {
-    issues: IndexMap<ID, Issue<ID>>,
-    milestones: IndexMap<ID, Milestone<ID>>,
-    plan: Plan<ID>,
-}
-
-impl<ID> PlannedIssues<ID> {
-    pub fn new() -> Self {
-        Self {
-            issues: IndexMap::new(),
-            milestones: IndexMap::new(),
-            plan: Plan { steps: IndexSet::new() },
-        }
-    }
-}
-
-impl<ID: std::hash::Hash + Eq + PartialEq + Clone> PlannedIssues<ID> {
-    pub fn get_issue(&self, id: &ID) -> Option<&Issue<ID>> {
-        self.issues.get(id)
-    }
-
-    pub fn get_milestone(&self, id: &ID) -> Option<&Milestone<ID>> {
-        self.milestones.get(id)
-    }
-
-    pub fn steps(&self) -> impl IntoIterator<Item = &Step<ID>> {
-        &self.plan.steps
-    }
-
-    pub fn add_issue(&mut self, issue: Issue<ID>) {
-        self.plan.steps.insert(Step::Issue(issue.id.clone()));
-        self.issues.insert(issue.id.clone(), issue);
-    }
-
-    pub fn add_milestone(&mut self, milestone: Milestone<ID>) {
-        self.plan.steps.insert(Step::Milestone(milestone.id.clone()));
-        self.milestones.insert(milestone.id.clone(), milestone);
-    }
-
-    pub fn add_issues(&mut self, issues: impl IntoIterator<Item = Issue<ID>>) {
-        for issue in issues {
-            self.add_issue(issue);
         }
     }
 }

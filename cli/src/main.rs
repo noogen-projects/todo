@@ -1,49 +1,13 @@
-use std::path::PathBuf;
-
-use clap::{Parser, Subcommand};
+use clap::Parser;
 use indexmap::{IndexMap, IndexSet};
 use todo_app::config::{ConfigLoader, DisplayProjectConfig, Title};
 use todo_app::open_tracker;
-use todo_lib::issue::Step;
+use todo_lib::plan::Step;
 use todo_tracker_fs::FsTracker;
 
-#[derive(Parser)]
-#[command(author, version, about, long_about = None)]
-struct CliOpts {
-    #[clap(short, long)]
-    config_file: Option<PathBuf>,
+use crate::opts::{CliOpts, Cmd, Command};
 
-    #[clap(short, long)]
-    project_dir: Option<PathBuf>,
-
-    #[command(subcommand)]
-    command: Command,
-}
-
-#[derive(Subcommand)]
-enum Command {
-    #[command(flatten)]
-    Default(Cmd),
-
-    #[command(subcommand)]
-    Issue(Cmd),
-
-    #[command(subcommand)]
-    Project(Cmd),
-}
-
-#[derive(Subcommand, Clone)]
-enum Cmd {
-    Info {
-        #[clap(short, long)]
-        project: Option<String>,
-    },
-    List {
-        #[clap(short, long)]
-        project: Option<String>,
-    },
-    Add,
-}
+mod opts;
 
 fn main() -> anyhow::Result<()> {
     let CliOpts {

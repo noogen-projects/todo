@@ -4,7 +4,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use indexmap::{IndexMap, IndexSet};
-use todo_lib::issue::PlannedIssues;
+use todo_lib::plan::Plan;
 use todo_lib::project::Project;
 
 use crate::config::ProjectConfig;
@@ -15,7 +15,7 @@ pub struct FsTracker<PID = String, ID = u64> {
     projects: IndexMap<PID, Project<PID>>,
     paths: HashMap<PID, PathBuf>,
     parents: IndexMap<PID, PID>,
-    issues: HashMap<PID, PlannedIssues<ID>>,
+    planes: HashMap<PID, Plan<ID>>,
 }
 
 impl<PID: Clone + Hash + Eq> FsTracker<PID> {
@@ -23,7 +23,7 @@ impl<PID: Clone + Hash + Eq> FsTracker<PID> {
         let mut projects = IndexMap::new();
         let mut paths = HashMap::new();
         let mut parents = IndexMap::new();
-        let mut issues = HashMap::new();
+        let mut planes = HashMap::new();
 
         for (parent_id, config) in &project_configs {
             parents.extend(config.projects.iter().cloned().map(|id| (id, parent_id.clone())));
@@ -32,8 +32,8 @@ impl<PID: Clone + Hash + Eq> FsTracker<PID> {
         for (id, config) in project_configs {
             if let Some(path) = config.path.clone() {
                 let id_generator = IntIdGenerator::new(config.start_id.unwrap_or(1));
-                if let Some(project_issues) = load::project_planned_issues(&path, &id_generator) {
-                    issues.insert(id.clone(), project_issues?);
+                if let Some(plan) = load::project_plan(&path, &id_generator) {
+                    planes.insert(id.clone(), plan?);
                 }
                 paths.insert(id.clone(), path);
             }
@@ -45,7 +45,7 @@ impl<PID: Clone + Hash + Eq> FsTracker<PID> {
             projects,
             paths,
             parents,
-            issues,
+            planes,
         })
     }
 
@@ -70,8 +70,8 @@ impl<PID: Clone + Hash + Eq> FsTracker<PID> {
         subprojects
     }
 
-    pub fn project_issues(&self, id: &PID) -> Option<&PlannedIssues<u64>> {
-        self.issues.get(id)
+    pub fn project_issues(&self, id: &PID) -> Option<&Plan<u64>> {
+        self.planes.get(id)
     }
 
     pub fn project_path(&self, id: &PID) -> Option<&Path> {
