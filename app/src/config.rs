@@ -8,16 +8,22 @@ use indexmap::{IndexMap, IndexSet};
 use serde::{Deserialize, Serialize};
 use todo_tracker_fs::config::{LoadConfigError, ProjectConfig as TrackerProjectConfig};
 
+#[derive(Debug, Default, Deserialize, Serialize)]
+#[serde(default)]
+pub struct SearchConfig {
+    pub projects: SearchProjectsConfig,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(default)]
-pub struct ProjectSearchConfig {
-    #[serde(default = "ProjectSearchConfig::default_enabled")]
+pub struct SearchProjectsConfig {
+    #[serde(default = "SearchProjectsConfig::default_enabled")]
     pub enabled: bool,
 
     pub dirs: Vec<PathBuf>,
 }
 
-impl Default for ProjectSearchConfig {
+impl Default for SearchProjectsConfig {
     fn default() -> Self {
         Self {
             enabled: Self::default_enabled(),
@@ -26,20 +32,26 @@ impl Default for ProjectSearchConfig {
     }
 }
 
-impl ProjectSearchConfig {
+impl SearchProjectsConfig {
     pub const fn default_enabled() -> bool {
         true
     }
 }
 
+#[derive(Debug, Default, Deserialize, Serialize)]
+#[serde(default)]
+pub struct ListConfig {
+    pub projects: ListProjectsConfig,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(default)]
-pub struct ProjectListConfig {
-    #[serde(default = "ProjectListConfig::default_enabled")]
+pub struct ListProjectsConfig {
+    #[serde(default = "ListProjectsConfig::default_enabled")]
     pub enabled: bool,
 }
 
-impl Default for ProjectListConfig {
+impl Default for ListProjectsConfig {
     fn default() -> Self {
         Self {
             enabled: Self::default_enabled(),
@@ -47,7 +59,7 @@ impl Default for ProjectListConfig {
     }
 }
 
-impl ProjectListConfig {
+impl ListProjectsConfig {
     pub const fn default_enabled() -> bool {
         true
     }
@@ -58,12 +70,13 @@ impl ProjectListConfig {
 pub struct ProjectConfig {
     pub path: Option<PathBuf>,
 
-    pub projects: IndexSet<String>,
+    pub subprojects: IndexSet<String>,
 }
 
 impl ProjectConfig {
     pub fn load_tracker_project_config(
         &self,
+        project_id: impl Into<String>,
         project_config_file_name: impl AsRef<Path>,
     ) -> Option<Result<TrackerProjectConfig, LoadConfigError>> {
         let project_path = self.path.as_ref()?;
@@ -73,16 +86,23 @@ impl ProjectConfig {
             project_path.clone()
         };
 
-        match TrackerProjectConfig::load(project_config_file_path) {
-            Ok(mut config) => {
-                config.path = Some(project_path.clone());
-                if !self.projects.is_empty() {
-                    config.projects = self.projects.clone();
+        let mut config = match TrackerProjectConfig::load(project_config_file_path) {
+            Ok(config) => config,
+            Err(err) => {
+                if project_path.is_dir() {
+                    TrackerProjectConfig::new(project_id.into())
+                } else {
+                    return Some(Err(err));
                 }
-                Some(Ok(config))
             },
-            Err(err) => Some(Err(err)),
+        };
+
+        config.path = Some(project_path.clone());
+        if !self.subprojects.is_empty() {
+            config.projects = self.subprojects.clone();
         }
+
+        Some(Ok(config))
     }
 }
 
@@ -116,9 +136,9 @@ pub struct Config {
     #[serde(default = "Config::default_project_config_file")]
     pub project_config_file: PathBuf,
 
-    pub project_search: ProjectSearchConfig,
+    pub search: SearchConfig,
 
-    pub project_list: ProjectListConfig,
+    pub list: ListConfig,
 
     pub project: IndexMap<String, ProjectConfig>,
 }
@@ -128,8 +148,8 @@ impl Default for Config {
         Self {
             display: Default::default(),
             project_config_file: Self::default_project_config_file(),
-            project_search: Default::default(),
-            project_list: Default::default(),
+            search: Default::default(),
+            list: Default::default(),
             project: Default::default(),
         }
     }

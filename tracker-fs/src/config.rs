@@ -30,6 +30,20 @@ pub struct ProjectConfig<ID: Hash + Eq = String> {
     pub projects: IndexSet<ID>,
 }
 
+impl<ID: Hash + Eq> ProjectConfig<ID> {
+    pub fn new(id: ID) -> Self {
+        Self {
+            id,
+            name: None,
+            desc: None,
+            path: None,
+            tags: Default::default(),
+            start_id: None,
+            projects: Default::default(),
+        }
+    }
+}
+
 impl<ID: for<'a> Deserialize<'a> + Hash + Eq> ProjectConfig<ID> {
     pub fn load(path: impl AsRef<Path>) -> Result<Self, LoadConfigError> {
         let path = path.as_ref();

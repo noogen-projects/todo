@@ -22,10 +22,10 @@ pub enum OpenTrackerError {
 pub fn open_tracker(config: &Config) -> Result<FsTracker, OpenTrackerError> {
     let mut projects = IndexMap::new();
 
-    if config.project_list.enabled {
+    if config.list.projects.enabled {
         for (project_id, project_config) in &config.project {
             if let Some(load_project_config_result) =
-                project_config.load_tracker_project_config(&config.project_config_file)
+                project_config.load_tracker_project_config(project_id, &config.project_config_file)
             {
                 let loaded_project_config = load_project_config_result?;
                 projects.insert(project_id.clone(), loaded_project_config);
@@ -33,9 +33,9 @@ pub fn open_tracker(config: &Config) -> Result<FsTracker, OpenTrackerError> {
         }
     }
 
-    if config.project_search.enabled {
+    if config.search.projects.enabled {
         projects.extend(find_projects::<String>(
-            &config.project_search.dirs,
+            &config.search.projects.dirs,
             &config.project_config_file,
         ));
     }

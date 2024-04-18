@@ -5,7 +5,9 @@ edition = "2021"
 
 [dependencies]
 anyhow = { workspace = true }
-config = { version = "0.13", features = ["preserve_order"] }
+config = { version = "0.13", features = [
+    "preserve_order",
+] } # Update after resolve this: https://github.com/mehcode/config-rs/issues/531
 home = "0.5"
 indexmap = { workspace = true }
 serde = { workspace = true }
