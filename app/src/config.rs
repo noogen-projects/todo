@@ -99,7 +99,7 @@ impl ProjectConfig {
 
         config.path = Some(project_path.clone());
         if !self.subprojects.is_empty() {
-            config.projects = self.subprojects.clone();
+            config.subprojects = self.subprojects.clone();
         }
 
         Some(Ok(config))

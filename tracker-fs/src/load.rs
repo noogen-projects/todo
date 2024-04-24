@@ -16,24 +16,68 @@ use crate::generator::IdGenerator;
 pub mod parse;
 
 pub fn project<ID: Hash + Eq>(id: ID, parent: Option<ID>, config: ProjectConfig<ID>) -> Project<ID> {
-    let mut project = Project::new(id, config.name.unwrap_or_default()).with_subprojects(config.projects);
+    let mut project = Project::new(id, config.name.unwrap_or_default()).with_subprojects(config.subprojects);
     if let Some(parent_id) = parent {
         project.set_parent(parent_id);
     }
     project
 }
 
-pub fn project_plan<ID, GEN>(project_root: impl AsRef<Path>, id_generator: GEN) -> Option<io::Result<Plan<ID>>>
+#[derive(Debug, Clone)]
+pub enum Source<P> {
+    WholeFile(P),
+    CodeBlockInFile(P),
+}
+
+impl<P> AsRef<P> for Source<P> {
+    fn as_ref(&self) -> &P {
+        match self {
+            Self::WholeFile(p) => p,
+            Self::CodeBlockInFile(p) => p,
+        }
+    }
+}
+
+pub fn project_plan<ID, GEN>(source: Source<impl AsRef<Path>>, id_generator: GEN) -> Option<io::Result<Plan<ID>>>
 where
     ID: Hash + Eq + Clone + FromStr,
     GEN: IdGenerator<Id = ID> + Copy,
 {
-    let path = project_root.as_ref().join("TODO.md");
-    if path.exists() {
-        Some(
-            fs::File::open(path)
+    if source.as_ref().as_ref().exists() {
+        Some(match source {
+            Source::WholeFile(path) => fs::File::open(path.as_ref())
                 .and_then(|file| plan_from_lines(io::BufReader::new(file).lines().enumerate(), id_generator)),
-        )
+            Source::CodeBlockInFile(path) => fs::File::open(path.as_ref()).and_then(|file| {
+                let mut in_block = false;
+                let mut inner_blocks: usize = 0;
+                let lines = io::BufReader::new(file).lines().enumerate().filter(|(_, line)| {
+                    let Ok(line) = line else {
+                        return false;
+                    };
+
+                    if !in_block {
+                        let prefix = "```md todo";
+                        if line[..line.len().min(prefix.len() + 1)].trim().to_lowercase() == prefix {
+                            in_block = true;
+                        }
+                        false
+                    } else {
+                        let line = line.trim_end();
+                        if line.starts_with("```") {
+                            if line.chars().nth(3).map(|ch| !ch.is_whitespace()).unwrap_or(false) {
+                                inner_blocks += 1;
+                            } else if inner_blocks == 0 {
+                                in_block = false;
+                            } else {
+                                inner_blocks -= 1;
+                            }
+                        }
+                        in_block
+                    }
+                });
+                plan_from_lines(lines, id_generator)
+            }),
+        })
     } else {
         None
     }
@@ -77,9 +121,7 @@ where
                             .insert(issue.id.clone());
                         issue.parent_id = Some(id);
                     }
-
-                    last.insert_issue(issue, issue_level);
-                } else {
+                } else if issue_level != 0 {
                     let parent_issue = if issue_level == last.level + 1 {
                         last.parsed_issues.last_mut().map(|(_, last_issue)| last_issue)
                     } else if issue_level < last.level {
@@ -103,9 +145,9 @@ where
 
                     parent_issue.subissues.insert(issue.id.clone());
                     issue.parent_id = Some(parent_issue.id.clone());
-
-                    last.insert_issue(issue, issue_level);
                 }
+
+                last.insert_issue(issue, issue_level);
                 last.line = Line::Issue;
             },
             (Item::Milestone(mut milestone), _milestone_level) => {
@@ -178,7 +220,7 @@ impl<ID: Hash + Eq + PartialEq + Clone> Last<ID> {
     fn find_parent(&mut self, item_level: usize) -> Option<&mut Issue<ID>> {
         let diff = self.level - item_level;
         let mut parent_issue_idx = self.parsed_issues.get_index_of(self.parent_id.as_ref()?)?;
-        for _ in 1..diff {
+        for _ in 0..diff {
             let parent_issue = self.parsed_issues.get_index(parent_issue_idx)?.1;
             parent_issue_idx = self.parsed_issues.get_index_of(parent_issue.parent_id.as_ref()?)?;
         }

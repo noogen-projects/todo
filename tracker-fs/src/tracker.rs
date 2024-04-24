@@ -9,7 +9,7 @@ use todo_lib::project::Project;
 
 use crate::config::ProjectConfig;
 use crate::generator::IntIdGenerator;
-use crate::load;
+use crate::load::{self, Source};
 
 pub struct FsTracker<PID = String, ID = u64> {
     projects: IndexMap<PID, Project<PID>>,
@@ -26,16 +26,17 @@ impl<PID: Clone + Hash + Eq> FsTracker<PID> {
         let mut planes = HashMap::new();
 
         for (parent_id, config) in &project_configs {
-            parents.extend(config.projects.iter().cloned().map(|id| (id, parent_id.clone())));
+            parents.extend(config.subprojects.iter().cloned().map(|id| (id, parent_id.clone())));
         }
 
         for (id, config) in project_configs {
-            if let Some(path) = config.path.clone() {
+            if let Some(project_root) = config.path.clone() {
                 let id_generator = IntIdGenerator::new(config.start_id.unwrap_or(1));
-                if let Some(plan) = load::project_plan(&path, &id_generator) {
+                let source = Source::WholeFile(project_root.join("TODO.md"));
+                if let Some(plan) = load::project_plan(source, &id_generator) {
                     planes.insert(id.clone(), plan?);
                 }
-                paths.insert(id.clone(), path);
+                paths.insert(id.clone(), project_root);
             }
             let project = load::project(id.clone(), parents.get(&id).cloned(), config);
             projects.insert(id, project);

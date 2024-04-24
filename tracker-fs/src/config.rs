@@ -27,7 +27,7 @@ pub struct ProjectConfig<ID: Hash + Eq = String> {
     pub tags: Vec<String>,
     pub start_id: Option<u64>,
     #[serde(default = "Default::default")]
-    pub projects: IndexSet<ID>,
+    pub subprojects: IndexSet<ID>,
 }
 
 impl<ID: Hash + Eq> ProjectConfig<ID> {
@@ -39,7 +39,7 @@ impl<ID: Hash + Eq> ProjectConfig<ID> {
             path: None,
             tags: Default::default(),
             start_id: None,
-            projects: Default::default(),
+            subprojects: Default::default(),
         }
     }
 }
