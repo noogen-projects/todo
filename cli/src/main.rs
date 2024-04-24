@@ -80,7 +80,7 @@ fn main() -> anyhow::Result<()> {
 fn print_steps(
     tracker: &FsTracker,
     project_id: &String,
-    print_prefix: impl Fn() -> (),
+    print_prefix: impl Fn(),
     max_count: Option<usize>,
     display_substeps: bool,
     compact: bool,
@@ -171,7 +171,7 @@ fn print_subprojects(
             },
         };
 
-        let steps_max_count = display_steps.then(|| config.steps).unwrap_or(0);
+        let steps_max_count = if display_steps { config.steps } else { 0 };
         if steps_max_count > 0 {
             if let Some(project) = project {
                 print_steps(
