@@ -5,6 +5,7 @@ members = [
     "cli",
     "lib",
     "tracker-fs",
+    "tests",
 ]
 
 [profile.release]

@@ -2,7 +2,7 @@ use indexmap::{IndexMap, IndexSet};
 
 use crate::issue::{Issue, Milestone};
 
-#[derive(Eq, Hash, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
 pub enum Step<ID> {
     Issue(ID),
     Milestone(ID),

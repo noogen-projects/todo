@@ -1,3 +1,5 @@
+use std::hash::Hash;
+
 use indexmap::IndexSet;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
@@ -43,6 +45,28 @@ pub struct Issue<ID> {
     pub relations: Vec<IssueRelation<ID>>,
 }
 
+impl<ID: Hash + Eq + PartialEq> PartialEq for Issue<ID> {
+    fn eq(&self, other: &Self) -> bool {
+        let Issue {
+            id,
+            parent_id,
+            name,
+            content,
+            subissues,
+            relations,
+        } = self;
+
+        *id == other.id
+            && *parent_id == other.parent_id
+            && *name == other.name
+            && *content == other.content
+            && *subissues == other.subissues
+            && *relations == other.relations
+    }
+}
+
+impl<ID: Hash + Eq + PartialEq> Eq for Issue<ID> {}
+
 impl<ID> Issue<ID> {
     pub fn new(id: ID, name: impl Into<String>) -> Self {
         Self {
@@ -66,11 +90,33 @@ impl<ID> Issue<ID> {
     }
 }
 
+impl<ID: Hash + Eq + PartialEq> Issue<ID> {
+    pub fn with_subissue(mut self, subissue_id: ID) -> Self {
+        self.subissues.insert(subissue_id);
+        self
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct Milestone<ID> {
     pub id: ID,
     pub name: String,
     pub needed_issues: IndexSet<ID>,
 }
+
+impl<ID: Hash + Eq + PartialEq> PartialEq for Milestone<ID> {
+    fn eq(&self, other: &Self) -> bool {
+        let Milestone {
+            id,
+            name,
+            needed_issues,
+        } = self;
+
+        *id == other.id && *name == other.name && *needed_issues == other.needed_issues
+    }
+}
+
+impl<ID: Hash + Eq + PartialEq> Eq for Milestone<ID> {}
 
 impl<ID> Milestone<ID> {
     pub fn new(id: ID, name: impl Into<String>) -> Self {
@@ -79,5 +125,12 @@ impl<ID> Milestone<ID> {
             name: name.into(),
             needed_issues: Default::default(),
         }
+    }
+}
+
+impl<ID: Hash + Eq + PartialEq> Milestone<ID> {
+    pub fn with_needed_issue(mut self, issue_id: ID) -> Self {
+        self.needed_issues.insert(issue_id);
+        self
     }
 }

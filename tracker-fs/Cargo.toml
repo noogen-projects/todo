@@ -13,3 +13,9 @@ thiserror = "1.0"
 todo-lib = { path = "../lib" }
 toml = { version = "0.8", features = ["preserve_order"] }
 walkdir = "2.4"
+
+[dev-dependencies]
+anyhow = { workspace = true }
+function_name = "0.3"
+tests = { path = "../tests" }
+temp_testdir = "0.2"
