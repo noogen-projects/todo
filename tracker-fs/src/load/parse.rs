@@ -22,7 +22,7 @@ impl<ID: FromStr> Item<ID> {
         let line_trimmed = line.trim_start_matches(' ');
         let line_level = (line.len() - line_trimmed.len()) / 2;
 
-        let item = if line.trim().is_empty() {
+        let item = if line.is_empty() {
             Item::Empty
         } else if <Issue<ID> as ParseLine<GEN>>::regex().is_match(&line) {
             Item::Issue(Issue::parse_line(line_trimmed, id_generator))

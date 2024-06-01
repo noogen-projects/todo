@@ -15,6 +15,7 @@ use todo_tracker_fs::load::Source;
 static TASK_LIST_TEXT: &'static str = r"
 - task A
   - task AA
+
 - task B [Mile 2](#mile-2)
 
 ---
@@ -24,6 +25,7 @@ static TASK_LIST_TEXT: &'static str = r"
 # Mile 1
 
 - task D
+  One line description
 - task E
   - task EA
   - task EB
@@ -32,9 +34,18 @@ static TASK_LIST_TEXT: &'static str = r"
 ---
 
 - task G
+  Multi line
+  description
+  
+  ```code
+  block
+  ```
+
 - task H
   - task HA
     - task HAA
+      Deep level description
+
     - task HAB
   - task HB
 - task I
@@ -69,7 +80,10 @@ fn assert_task_list_plan(plan: &Plan<u64>) {
     assert_eq!(*plan.get_issue(&2).unwrap(), Issue::new(2, "task AA").with_parent_id(1));
     assert_eq!(*plan.get_issue(&3).unwrap(), Issue::new(3, "task B [Mile 2](#mile-2)"));
     assert_eq!(*plan.get_issue(&4).unwrap(), Issue::new(4, "task C"));
-    assert_eq!(*plan.get_issue(&6).unwrap(), Issue::new(6, "task D"));
+    assert_eq!(
+        *plan.get_issue(&6).unwrap(),
+        Issue::new(6, "task D").with_content("One line description")
+    );
     assert_eq!(
         *plan.get_issue(&7).unwrap(),
         Issue::new(7, "task E").with_subissue(8).with_subissue(9)
@@ -77,7 +91,17 @@ fn assert_task_list_plan(plan: &Plan<u64>) {
     assert_eq!(*plan.get_issue(&8).unwrap(), Issue::new(8, "task EA").with_parent_id(7));
     assert_eq!(*plan.get_issue(&9).unwrap(), Issue::new(9, "task EB").with_parent_id(7));
     assert_eq!(*plan.get_issue(&10).unwrap(), Issue::new(10, "task F"));
-    assert_eq!(*plan.get_issue(&11).unwrap(), Issue::new(11, "task G"));
+    assert_eq!(
+        *plan.get_issue(&11).unwrap(),
+        Issue::new(11, "task G").with_content(
+            r"Multi line
+description
+
+```code
+block
+```"
+        )
+    );
     assert_eq!(
         *plan.get_issue(&12).unwrap(),
         Issue::new(12, "task H").with_subissue(13).with_subissue(16)
@@ -91,7 +115,9 @@ fn assert_task_list_plan(plan: &Plan<u64>) {
     );
     assert_eq!(
         *plan.get_issue(&14).unwrap(),
-        Issue::new(14, "task HAA").with_parent_id(13)
+        Issue::new(14, "task HAA")
+            .with_parent_id(13)
+            .with_content("Deep level description")
     );
     assert_eq!(
         *plan.get_issue(&15).unwrap(),

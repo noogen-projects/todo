@@ -112,8 +112,10 @@ where
                 }
             },
             (Item::Issue(mut issue), issue_level) => {
-                if issue_level == last.level {
-                    if let (Line::Issue, Some(id)) = (last.line, last.parent_id.clone()) {
+                if issue_level == last.issue_level {
+                    if let (Line::Issue | Line::Description | Line::Empty, Some(id)) =
+                        (last.line, last.issue_parent_id.clone())
+                    {
                         last.parsed_issues
                             .get_mut(&id)
                             .expect("issue for previous parent must parsed")
@@ -122,16 +124,16 @@ where
                         issue.parent_id = Some(id);
                     }
                 } else if issue_level != 0 {
-                    let parent_issue = if issue_level == last.level + 1 {
+                    let parent_issue = if issue_level == last.issue_level + 1 {
                         last.parsed_issues.last_mut().map(|(_, last_issue)| last_issue)
-                    } else if issue_level < last.level {
+                    } else if issue_level < last.issue_level {
                         last.find_parent(issue_level)
                     } else {
                         return Err(io::Error::new(
                             io::ErrorKind::InvalidData,
                             format!(
                                 "in line {line_idx}: issue level = {issue_level} is greater than previous issue level + 1 = {}",
-                                last.level + 1
+                                last.issue_level + 1
                             ),
                         ));
                     }.ok_or_else(|| {
@@ -157,8 +159,8 @@ where
                 last.line = Line::Milestone;
             },
             (Item::Text(text), text_level) => match last.line {
-                Line::Issue | Line::Description | Line::Empty if text_level > last.level => {
-                    let mut padding = last.level * 2;
+                Line::Issue | Line::Description | Line::Empty if text_level > last.issue_level => {
+                    let mut padding = (last.issue_level + 1) * 2;
                     let description_line = text.trim_start_matches(|ch| {
                         if padding > 0 && ch == ' ' {
                             true
@@ -173,8 +175,10 @@ where
                         .last_mut()
                         .expect("issue for description must exist")
                         .1;
+                    if !target_issue.content.is_empty() {
+                        target_issue.content.push('\n');
+                    }
                     target_issue.content.push_str(description_line);
-                    target_issue.content.push('\n');
 
                     last.line = Line::Description;
                 },
@@ -187,7 +191,7 @@ where
     Ok(planned)
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 enum Line {
     #[default]
     None,
@@ -199,10 +203,10 @@ enum Line {
     Other,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct Last<ID> {
-    level: usize,
-    parent_id: Option<ID>,
+    issue_level: usize,
+    issue_parent_id: Option<ID>,
     line: Line,
     parsed_issues: IndexMap<ID, Issue<ID>>,
 }
@@ -210,16 +214,17 @@ struct Last<ID> {
 impl<ID: Hash + Eq + PartialEq + Clone> Last<ID> {
     fn new() -> Self {
         Self {
-            level: 0,
-            parent_id: None,
+            issue_level: 0,
+            issue_parent_id: None,
             line: Line::None,
             parsed_issues: IndexMap::new(),
         }
     }
 
     fn find_parent(&mut self, item_level: usize) -> Option<&mut Issue<ID>> {
-        let diff = self.level - item_level;
-        let mut parent_issue_idx = self.parsed_issues.get_index_of(self.parent_id.as_ref()?)?;
+        let diff = self.issue_level - item_level;
+
+        let mut parent_issue_idx = self.parsed_issues.get_index_of(self.issue_parent_id.as_ref()?)?;
         for _ in 0..diff {
             let parent_issue = self.parsed_issues.get_index(parent_issue_idx)?.1;
             parent_issue_idx = self.parsed_issues.get_index_of(parent_issue.parent_id.as_ref()?)?;
@@ -232,8 +237,8 @@ impl<ID: Hash + Eq + PartialEq + Clone> Last<ID> {
     }
 
     fn insert_issue(&mut self, issue: Issue<ID>, issue_level: usize) {
-        self.parent_id = issue.parent_id.clone();
+        self.issue_parent_id = issue.parent_id.clone();
+        self.issue_level = issue_level;
         self.parsed_issues.insert(issue.id.clone(), issue);
-        self.level = issue_level;
     }
 }
