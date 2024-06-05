@@ -25,7 +25,7 @@ pub fn open_tracker(config: &Config) -> Result<FsTracker, OpenTrackerError> {
     if config.list.projects.enabled {
         for (project_id, project_config) in &config.project {
             if let Some(load_project_config_result) =
-                project_config.load_tracker_project_config(project_id, &config.project_config_file)
+                project_config.load_tracker_project_config(project_id, &config.source.project_config_file)
             {
                 let loaded_project_config = load_project_config_result?;
                 projects.insert(project_id.clone(), loaded_project_config);
@@ -36,9 +36,13 @@ pub fn open_tracker(config: &Config) -> Result<FsTracker, OpenTrackerError> {
     if config.search.projects.enabled {
         projects.extend(find_projects::<String>(
             &config.search.projects.dirs,
-            &config.project_config_file,
+            &config.source.project_config_file,
         ));
     }
 
-    Ok(FsTracker::new(projects)?)
+    Ok(FsTracker::new(
+        projects,
+        &config.source.manifest_filename_regex,
+        &config.source.todo_filename_regex,
+    )?)
 }

@@ -10,6 +10,8 @@ config = { version = "0.13", features = [
 ] } # Update after resolve this: https://github.com/mehcode/config-rs/issues/531
 home = "0.5"
 indexmap = { workspace = true }
+regex = "1.10"
 serde = { workspace = true }
+serde_regex = "1.1"
 thiserror = { workspace = true }
 todo-tracker-fs = { path = "../tracker-fs" }

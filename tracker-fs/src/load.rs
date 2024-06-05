@@ -57,8 +57,10 @@ where
 
                     if !in_block {
                         let prefix = "```md todo";
-                        if line[..line.len().min(prefix.len() + 1)].trim().to_lowercase() == prefix {
-                            in_block = true;
+                        if let Some(start) = line.get(..line.len().min(prefix.len() + 1)) {
+                            if start.trim().to_lowercase() == prefix {
+                                in_block = true;
+                            }
                         }
                         false
                     } else {
@@ -237,7 +239,7 @@ impl<ID: Hash + Eq + PartialEq + Clone> Last<ID> {
     }
 
     fn insert_issue(&mut self, issue: Issue<ID>, issue_level: usize) {
-        self.issue_parent_id = issue.parent_id.clone();
+        self.issue_parent_id.clone_from(&issue.parent_id);
         self.issue_level = issue_level;
         self.parsed_issues.insert(issue.id.clone(), issue);
     }

@@ -12,7 +12,7 @@ serde = { workspace = true }
 thiserror = "1.0"
 todo-lib = { path = "../lib" }
 toml = { version = "0.8", features = ["preserve_order"] }
-walkdir = "2.4"
+walkdir = "2.5"
 
 [dev-dependencies]
 anyhow = { workspace = true }

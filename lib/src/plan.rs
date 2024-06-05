@@ -26,6 +26,16 @@ impl<ID> Plan<ID> {
 }
 
 impl<ID: std::hash::Hash + Eq + PartialEq + Clone> Plan<ID> {
+    pub fn is_empty(&self) -> bool {
+        let Self {
+            issues,
+            milestones,
+            steps,
+        } = self;
+
+        issues.is_empty() && milestones.is_empty() && steps.is_empty()
+    }
+
     pub fn get_issue(&self, id: &ID) -> Option<&Issue<ID>> {
         self.issues.get(id)
     }
@@ -52,5 +62,19 @@ impl<ID: std::hash::Hash + Eq + PartialEq + Clone> Plan<ID> {
         for issue in issues {
             self.add_issue(issue);
         }
+    }
+
+    pub fn merge(mut self, other: Self) -> Self {
+        let Self {
+            issues,
+            milestones,
+            steps,
+        } = &mut self;
+
+        issues.extend(other.issues);
+        milestones.extend(other.milestones);
+        steps.extend(other.steps);
+
+        self
     }
 }

@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 pub use config::ConfigError;
 use config::{Environment, File};
 use indexmap::{IndexMap, IndexSet};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use todo_tracker_fs::config::{LoadConfigError, ProjectConfig as TrackerProjectConfig};
 
@@ -99,7 +100,7 @@ impl ProjectConfig {
 
         config.path = Some(project_path.clone());
         if !self.subprojects.is_empty() {
-            config.subprojects = self.subprojects.clone();
+            config.subprojects.clone_from(&self.subprojects);
         }
 
         Some(Ok(config))
@@ -130,35 +131,53 @@ pub struct DisplayConfig {
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(default)]
-pub struct Config {
-    pub display: DisplayConfig,
+pub struct SourceConfig {
+    #[serde(default = "SourceConfig::default_manifest_filename_regex", with = "serde_regex")]
+    pub manifest_filename_regex: Regex,
 
-    #[serde(default = "Config::default_project_config_file")]
+    #[serde(default = "SourceConfig::default_todo_filename_regex", with = "serde_regex")]
+    pub todo_filename_regex: Regex,
+
+    #[serde(default = "SourceConfig::default_project_config_file")]
     pub project_config_file: PathBuf,
+}
+
+impl Default for SourceConfig {
+    fn default() -> Self {
+        Self {
+            manifest_filename_regex: Self::default_manifest_filename_regex(),
+            todo_filename_regex: Self::default_todo_filename_regex(),
+            project_config_file: Self::default_project_config_file(),
+        }
+    }
+}
+
+impl SourceConfig {
+    pub fn default_manifest_filename_regex() -> Regex {
+        Regex::new(".*\\.manifest.md$").expect("regex mus be correct")
+    }
+
+    pub fn default_todo_filename_regex() -> Regex {
+        Regex::new("^TODO.md$").expect("regex mus be correct")
+    }
+
+    pub fn default_project_config_file() -> PathBuf {
+        "Project.toml".into()
+    }
+}
+
+#[derive(Debug, Default, Deserialize, Serialize)]
+#[serde(default)]
+pub struct Config {
+    pub source: SourceConfig,
+
+    pub display: DisplayConfig,
 
     pub search: SearchConfig,
 
     pub list: ListConfig,
 
     pub project: IndexMap<String, ProjectConfig>,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            display: Default::default(),
-            project_config_file: Self::default_project_config_file(),
-            search: Default::default(),
-            list: Default::default(),
-            project: Default::default(),
-        }
-    }
-}
-
-impl Config {
-    pub fn default_project_config_file() -> PathBuf {
-        "Project.toml".into()
-    }
 }
 
 #[derive(Debug, Default)]

@@ -4,8 +4,10 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use indexmap::{IndexMap, IndexSet};
+use regex::Regex;
 use todo_lib::plan::Plan;
 use todo_lib::project::Project;
+use walkdir::{DirEntry, WalkDir};
 
 use crate::config::ProjectConfig;
 use crate::generator::IntIdGenerator;
@@ -19,7 +21,53 @@ pub struct FsTracker<PID = String, ID = u64> {
 }
 
 impl<PID: Clone + Hash + Eq> FsTracker<PID> {
-    pub fn new(project_configs: IndexMap<PID, ProjectConfig<PID>>) -> io::Result<Self> {
+    fn load_project_plan(
+        project_config: &ProjectConfig<PID>,
+        manifest_filename_regex: &Regex,
+        todo_filename_regex: &Regex,
+    ) -> Option<io::Result<Plan<u64>>> {
+        let project_root = project_config.path.clone()?;
+        let id_generator = IntIdGenerator::new(project_config.start_id.unwrap_or(1));
+        let mut plan = Plan::new();
+        let mut plan_exists = false;
+
+        let manifest_file_path = find_match_files(&project_root, manifest_filename_regex)
+            .next()
+            .map(|entry| entry.into_path());
+        let todo_file_path = find_match_files(&project_root, todo_filename_regex)
+            .next()
+            .map(|entry| entry.into_path());
+
+        if let Some(manifest_file_path) = manifest_file_path {
+            let source = Source::CodeBlockInFile(manifest_file_path);
+            plan = match load::project_plan(source, &id_generator)? {
+                Ok(plan) => plan,
+                Err(err) => return Some(Err(err)),
+            };
+            plan_exists = true;
+        }
+
+        if let Some(todo_file_path) = todo_file_path {
+            let source = Source::WholeFile(todo_file_path);
+            plan = plan.merge(match load::project_plan(source, &id_generator)? {
+                Ok(plan) => plan,
+                Err(err) => return Some(Err(err)),
+            });
+            plan_exists = true;
+        }
+
+        if plan_exists {
+            Some(Ok(plan))
+        } else {
+            None
+        }
+    }
+
+    pub fn new(
+        project_configs: IndexMap<PID, ProjectConfig<PID>>,
+        manifest_filename_regex: &Regex,
+        todo_filename_regex: &Regex,
+    ) -> io::Result<Self> {
         let mut projects = IndexMap::new();
         let mut paths = HashMap::new();
         let mut parents = IndexMap::new();
@@ -31,9 +79,7 @@ impl<PID: Clone + Hash + Eq> FsTracker<PID> {
 
         for (id, config) in project_configs {
             if let Some(project_root) = config.path.clone() {
-                let id_generator = IntIdGenerator::new(config.start_id.unwrap_or(1));
-                let source = Source::WholeFile(project_root.join("TODO.md"));
-                if let Some(plan) = load::project_plan(source, &id_generator) {
+                if let Some(plan) = Self::load_project_plan(&config, manifest_filename_regex, todo_filename_regex) {
                     planes.insert(id.clone(), plan?);
                 }
                 paths.insert(id.clone(), project_root);
@@ -78,4 +124,15 @@ impl<PID: Clone + Hash + Eq> FsTracker<PID> {
     pub fn project_path(&self, id: &PID) -> Option<&Path> {
         self.paths.get(id).map(|path| path.as_path())
     }
+}
+
+pub fn find_match_files<'a>(root_dir: &Path, regex: &'a Regex) -> impl Iterator<Item = DirEntry> + 'a {
+    WalkDir::new(root_dir)
+        .max_depth(1)
+        .into_iter()
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| {
+            let file_name = entry.file_name().to_string_lossy();
+            regex.is_match(file_name.as_ref())
+        })
 }
