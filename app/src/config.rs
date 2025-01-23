@@ -79,8 +79,16 @@ impl ProjectConfig {
         &self,
         project_id: impl Into<String>,
         project_config_file_name: impl AsRef<Path>,
+        projects_root_dir: Option<impl Into<PathBuf>>,
     ) -> Option<Result<TrackerProjectConfig, LoadConfigError>> {
-        let project_path = self.path.as_ref()?;
+        let mut project_path = self.path.clone()?;
+
+        if let Some(projects_root_dir) = projects_root_dir {
+            if project_path.is_relative() {
+                project_path = projects_root_dir.into().join(project_path)
+            }
+        }
+
         let project_config_file_path = if project_path.is_dir() {
             project_path.join(project_config_file_name)
         } else {
@@ -98,7 +106,7 @@ impl ProjectConfig {
             },
         };
 
-        config.path = Some(project_path.clone());
+        config.path = Some(project_path);
         if !self.subprojects.is_empty() {
             config.subprojects.clone_from(&self.subprojects);
         }
@@ -140,6 +148,8 @@ pub struct SourceConfig {
 
     #[serde(default = "SourceConfig::default_project_config_file")]
     pub project_config_file: PathBuf,
+
+    pub projects_root_dir: Option<PathBuf>,
 }
 
 impl Default for SourceConfig {
@@ -148,6 +158,7 @@ impl Default for SourceConfig {
             manifest_filename_regex: Self::default_manifest_filename_regex(),
             todo_filename_regex: Self::default_todo_filename_regex(),
             project_config_file: Self::default_project_config_file(),
+            projects_root_dir: None,
         }
     }
 }
@@ -219,6 +230,8 @@ impl ConfigBuilder {
     }
 }
 
+pub const DEFAULT_CONFIG_FILE_NAME: &str = "todo.toml";
+
 #[derive(Debug)]
 pub struct ConfigLoader {
     config_file_name: String,
@@ -229,14 +242,13 @@ pub struct ConfigLoader {
 
 impl Default for ConfigLoader {
     fn default() -> Self {
-        let default_config_file_name = "todo.toml";
         let root_config_file = home::home_dir()
             .unwrap_or_default()
             .join(".todo")
-            .join(default_config_file_name);
+            .join(DEFAULT_CONFIG_FILE_NAME);
 
         Self {
-            config_file_name: default_config_file_name.into(),
+            config_file_name: DEFAULT_CONFIG_FILE_NAME.into(),
             root_config_file,
             config_file: None,
             project_dir: None,
