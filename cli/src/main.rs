@@ -1,5 +1,6 @@
 use clap::Parser;
 use indexmap::{IndexMap, IndexSet};
+use opts::NewProject;
 use todo_app::config::{ConfigLoader, DisplayProjectConfig, Title};
 use todo_app::open_tracker;
 use todo_lib::plan::Step;
@@ -7,28 +8,33 @@ use todo_tracker_fs::FsTracker;
 
 use crate::opts::{CliOpts, Cmd, Command};
 
+mod command;
 mod opts;
+mod output;
 
 fn main() -> anyhow::Result<()> {
     let CliOpts {
         config_file,
-        project_dir,
+        project_path,
         command,
     } = CliOpts::parse();
 
     let profile = ConfigLoader::default()
         .maybe_with_config_file(config_file)
-        .maybe_with_project_dir(project_dir)
+        .maybe_with_project_dir(project_path)
         .load()
         .expect("Wrong config structure");
 
     match command {
+        Command::New(NewProject { manifest, path }) => {
+            command::new_project(manifest, path, &profile.config)?;
+        },
         Command::Default(Cmd::List { project }) | Command::Issue(Cmd::List { project }) => {
             if let Some(project) = project {
                 let tracker = open_tracker(&profile.config)?;
 
                 if let Some(project) = tracker.projects().get(&project) {
-                    print_steps(&tracker, project.id(), Default::default, None, true, false);
+                    display_steps(&tracker, project.id(), Default::default, None, true, false);
                 }
             }
         },
@@ -46,13 +52,13 @@ fn main() -> anyhow::Result<()> {
                     };
 
                     match title {
-                        Title::Id => println!("{}", project.id()),
-                        Title::Name => println!("{}", project.name()),
-                        Title::IdName => println!("{id}: {name}", id = project.id(), name = project.name()),
+                        Title::Id => outln!("{}", project.id()),
+                        Title::Name => outln!("{}", project.name()),
+                        Title::IdName => outln!("{id}: {name}", id = project.id(), name = project.name()),
                     };
 
                     if let Some(children) = subprojects.get(project.id()) {
-                        print_subprojects(
+                        display_subprojects(
                             &tracker,
                             config,
                             children,
@@ -68,7 +74,7 @@ fn main() -> anyhow::Result<()> {
             let tracker = open_tracker(&profile.config)?;
 
             for project in tracker.projects().values() {
-                println!("{id}", id = project.id());
+                outln!("{id}", id = project.id());
             }
         },
         _ => {},
@@ -77,7 +83,7 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn print_steps(
+fn display_steps(
     tracker: &FsTracker,
     project_id: &String,
     print_prefix: impl Fn(),
@@ -93,7 +99,7 @@ fn print_steps(
         let mut print_line = |level, text: &str| {
             if step_count < max_count {
                 print_prefix();
-                println!("{:1$}{text}", "", level * 2);
+                outln!("{:1$}{text}", "", level * 2);
             }
             step_count += 1;
         };
@@ -134,54 +140,54 @@ fn print_steps(
         }
         if step_count > max_count {
             print_prefix();
-            println!("..{}", step_count - max_count);
+            outln!("..{}", step_count - max_count);
         }
     }
 }
 
-fn print_subprojects(
+fn display_subprojects(
     tracker: &FsTracker,
     config: &DisplayProjectConfig,
     children: &IndexSet<String>,
     subprojects: &IndexMap<String, IndexSet<String>>,
     depth: usize,
-    display_steps: bool,
+    need_display_steps: bool,
 ) {
     for (idx, child_id) in children.iter().enumerate() {
         let mut prefix = String::new();
         for level in 0..depth {
             prefix.push_str(if level == 0 { "  " } else { "│    " });
         }
-        print!("{prefix}");
+        out!("{prefix}");
 
         let connection = if idx + 1 == children.len() { "└─" } else { "├─" };
-        print!("{connection} ");
+        out!("{connection} ");
 
         let project = tracker.projects().get(child_id);
         match config.title {
-            Title::Id => println!("{child_id}"),
-            Title::Name => println!("{}", project.map(|project| project.name()).unwrap_or(child_id)),
+            Title::Id => outln!("{child_id}"),
+            Title::Name => outln!("{}", project.map(|project| project.name()).unwrap_or(child_id)),
             Title::IdName => {
-                print!("{child_id}");
+                out!("{child_id}");
                 let name = project.map(|project| project.name()).unwrap_or_default();
                 if !name.is_empty() {
-                    print!(": {name}");
+                    out!(": {name}");
                 }
-                println!();
+                outln!();
             },
         };
 
-        let steps_max_count = if display_steps { config.steps } else { 0 };
+        let steps_max_count = if need_display_steps { config.steps } else { 0 };
         if steps_max_count > 0 {
             if let Some(project) = project {
-                print_steps(
+                display_steps(
                     tracker,
                     project.id(),
                     || {
                         if subprojects.get(child_id).is_some() {
-                            print!("{prefix}│    │ ");
+                            out!("{prefix}│    │ ");
                         } else {
-                            print!("{prefix}│    ");
+                            out!("{prefix}│    ");
                         }
                     },
                     Some(steps_max_count),
@@ -192,7 +198,7 @@ fn print_subprojects(
         }
 
         if let Some(children) = subprojects.get(child_id) {
-            print_subprojects(tracker, config, children, subprojects, depth + 1, display_steps);
+            display_subprojects(tracker, config, children, subprojects, depth + 1, need_display_steps);
         }
     }
 }

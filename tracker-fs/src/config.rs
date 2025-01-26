@@ -18,6 +18,15 @@ pub enum LoadConfigError {
     FailToDeserialize(#[from] toml::de::Error),
 }
 
+#[derive(Debug, Error)]
+pub enum SaveConfigError {
+    #[error("{0}")]
+    FailToWrite(#[from] io::Error),
+
+    #[error("Fail to serialize: {0}")]
+    FailToSerialize(#[from] toml::ser::Error),
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ProjectConfig<ID: Hash + Eq = String> {
     pub id: ID,
@@ -42,13 +51,33 @@ impl<ID: Hash + Eq> ProjectConfig<ID> {
             subprojects: Default::default(),
         }
     }
+
+    pub fn with_name(mut self, name: String) -> Self {
+        self.name = Some(name);
+        self
+    }
 }
 
 impl<ID: for<'a> Deserialize<'a> + Hash + Eq> ProjectConfig<ID> {
+    pub fn from_toml(content: &str) -> Result<Self, toml::de::Error> {
+        toml::from_str(content)
+    }
+
     pub fn load(path: impl AsRef<Path>) -> Result<Self, LoadConfigError> {
         let path = path.as_ref();
         let content = fs::read_to_string(path)?;
-        Ok(toml::from_str(&content)?)
+        Ok(Self::from_toml(&content)?)
+    }
+}
+
+impl<ID: Serialize + Hash + Eq> ProjectConfig<ID> {
+    pub fn to_toml(&self) -> Result<String, toml::ser::Error> {
+        toml::to_string(self)
+    }
+
+    pub fn save(&self, path: impl AsRef<Path>) -> Result<(), SaveConfigError> {
+        let content = self.to_toml()?;
+        fs::write(path, content).map_err(Into::into)
     }
 }
 

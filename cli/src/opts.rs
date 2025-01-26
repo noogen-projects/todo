@@ -9,7 +9,7 @@ pub struct CliOpts {
     pub config_file: Option<PathBuf>,
 
     #[clap(short, long)]
-    pub project_dir: Option<PathBuf>,
+    pub project_path: Option<PathBuf>,
 
     #[command(subcommand)]
     pub command: Command,
@@ -19,6 +19,8 @@ pub struct CliOpts {
 pub enum Command {
     #[command(flatten)]
     Default(Cmd),
+
+    New(NewProject),
 
     #[command(subcommand)]
     Issue(Cmd),
@@ -38,4 +40,14 @@ pub enum Cmd {
         project: Option<String>,
     },
     Add,
+}
+
+#[derive(Parser, Clone)]
+pub struct NewProject {
+    /// Create new project with manifest file
+    #[arg(short, long)]
+    pub manifest: bool,
+
+    /// New project path
+    pub path: PathBuf,
 }

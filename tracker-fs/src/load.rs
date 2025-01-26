@@ -12,6 +12,7 @@ use todo_lib::project::Project;
 use self::parse::Item;
 use crate::config::ProjectConfig;
 use crate::generator::IdGenerator;
+use crate::Target;
 
 pub mod parse;
 
@@ -23,31 +24,16 @@ pub fn project<ID: Hash + Eq>(id: ID, parent: Option<ID>, config: ProjectConfig<
     project
 }
 
-#[derive(Debug, Clone)]
-pub enum Source<P> {
-    WholeFile(P),
-    CodeBlockInFile(P),
-}
-
-impl<P> AsRef<P> for Source<P> {
-    fn as_ref(&self) -> &P {
-        match self {
-            Self::WholeFile(p) => p,
-            Self::CodeBlockInFile(p) => p,
-        }
-    }
-}
-
-pub fn project_plan<ID, GEN>(source: Source<impl AsRef<Path>>, id_generator: GEN) -> Option<io::Result<Plan<ID>>>
+pub fn project_plan<ID, GEN>(source: Target<impl AsRef<Path>>, id_generator: GEN) -> Option<io::Result<Plan<ID>>>
 where
     ID: Hash + Eq + Clone + FromStr,
     GEN: IdGenerator<Id = ID> + Copy,
 {
     if source.as_ref().as_ref().exists() {
         Some(match source {
-            Source::WholeFile(path) => fs::File::open(path.as_ref())
+            Target::WholeFile(path) => fs::File::open(path.as_ref())
                 .and_then(|file| plan_from_lines(io::BufReader::new(file).lines().enumerate(), id_generator)),
-            Source::CodeBlockInFile(path) => fs::File::open(path.as_ref()).and_then(|file| {
+            Target::CodeBlockInFile(path) => fs::File::open(path.as_ref()).and_then(|file| {
                 let mut in_block = false;
                 let mut inner_blocks: usize = 0;
                 let lines = io::BufReader::new(file).lines().enumerate().filter(|(_, line)| {

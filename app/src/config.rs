@@ -143,6 +143,9 @@ pub struct SourceConfig {
     #[serde(default = "SourceConfig::default_manifest_filename_regex", with = "serde_regex")]
     pub manifest_filename_regex: Regex,
 
+    #[serde(default = "SourceConfig::default_manifest_filename_example")]
+    pub manifest_filename_example: String,
+
     #[serde(default = "SourceConfig::default_todo_filename_regex", with = "serde_regex")]
     pub todo_filename_regex: Regex,
 
@@ -156,6 +159,7 @@ impl Default for SourceConfig {
     fn default() -> Self {
         Self {
             manifest_filename_regex: Self::default_manifest_filename_regex(),
+            manifest_filename_example: Self::default_manifest_filename_example(),
             todo_filename_regex: Self::default_todo_filename_regex(),
             project_config_file: Self::default_project_config_file(),
             projects_root_dir: None,
@@ -165,11 +169,15 @@ impl Default for SourceConfig {
 
 impl SourceConfig {
     pub fn default_manifest_filename_regex() -> Regex {
-        Regex::new(".*\\.manifest.md$").expect("regex mus be correct")
+        Regex::new("(.*)\\.manifest\\.md$").expect("regex mus be correct")
+    }
+
+    pub fn default_manifest_filename_example() -> String {
+        "test.manifest.md".into()
     }
 
     pub fn default_todo_filename_regex() -> Regex {
-        Regex::new("^TODO.md$").expect("regex mus be correct")
+        Regex::new("^TODO\\.md$").expect("regex mus be correct")
     }
 
     pub fn default_project_config_file() -> PathBuf {

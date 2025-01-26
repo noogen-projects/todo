@@ -11,7 +11,7 @@ use walkdir::{DirEntry, WalkDir};
 
 use crate::config::ProjectConfig;
 use crate::generator::IntIdGenerator;
-use crate::load::{self, Source};
+use crate::{load, Target};
 
 pub struct FsTracker<PID = String, ID = u64> {
     projects: IndexMap<PID, Project<PID>>,
@@ -39,7 +39,7 @@ impl<PID: Clone + Hash + Eq> FsTracker<PID> {
             .map(|entry| entry.into_path());
 
         if let Some(manifest_file_path) = manifest_file_path {
-            let source = Source::CodeBlockInFile(manifest_file_path);
+            let source = Target::CodeBlockInFile(manifest_file_path);
             plan = match load::project_plan(source, &id_generator)? {
                 Ok(plan) => plan,
                 Err(err) => return Some(Err(err)),
@@ -48,7 +48,7 @@ impl<PID: Clone + Hash + Eq> FsTracker<PID> {
         }
 
         if let Some(todo_file_path) = todo_file_path {
-            let source = Source::WholeFile(todo_file_path);
+            let source = Target::WholeFile(todo_file_path);
             plan = plan.merge(match load::project_plan(source, &id_generator)? {
                 Ok(plan) => plan,
                 Err(err) => return Some(Err(err)),
