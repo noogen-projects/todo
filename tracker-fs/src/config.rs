@@ -30,12 +30,20 @@ pub enum SaveConfigError {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ProjectConfig<ID: Hash + Eq = String> {
     pub id: ID,
+
     pub name: Option<String>,
+
     pub desc: Option<String>,
+
     pub path: Option<PathBuf>,
+
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<String>,
+
     pub start_id: Option<u64>,
+
     #[serde(default = "Default::default")]
+    #[serde(skip_serializing_if = "IndexSet::is_empty")]
     pub subprojects: IndexSet<ID>,
 }
 
