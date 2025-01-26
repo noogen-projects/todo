@@ -46,11 +46,24 @@ pub fn new_project(
         .with_context(|| format!("Failed to create project directory {}", full_path.display()))?;
 
     let destination = if using_manifest {
-        let filename = config
+        let example_project_name = config
             .source
             .manifest_filename_regex
-            .replace(&config.source.manifest_filename_example, &name);
-        Target::CodeBlockInFile(full_path.join(filename.as_ref()))
+            .captures(&config.source.manifest_filename_example)
+            .and_then(|captures| captures.get(1))
+            .map(|name| name.as_str())
+            .unwrap_or_default();
+
+        let filename = if example_project_name.is_empty() {
+            name.clone()
+        } else {
+            config
+                .source
+                .manifest_filename_example
+                .replace(example_project_name, &name)
+        };
+
+        Target::CodeBlockInFile(full_path.join(filename))
     } else {
         Target::WholeFile(full_path.join(&config.source.project_config_file))
     };
