@@ -30,16 +30,16 @@ pub fn new_project(
         path.into()
     };
 
-    if full_path.exists() {
-        eoutln!("Error: destination `{}` already exists", full_path.display());
-        return Ok(());
-    }
-
     if is_project_name_only {
         outln!("    Creating `{name}` project");
     } else {
         let parent_path = full_path.parent().context("Full path must have a parent")?;
         outln!("    Creating `{name}` project under `{}`", parent_path.display());
+    }
+
+    if full_path.exists() {
+        eoutln!("Error: destination `{}` already exists", full_path.display());
+        return Ok(());
     }
 
     fs::create_dir(&full_path)

@@ -173,7 +173,7 @@ impl SourceConfig {
     }
 
     pub fn default_manifest_filename_example() -> String {
-        "test.manifest.md".into()
+        "example.manifest.md".into()
     }
 
     pub fn default_todo_filename_regex() -> Regex {

@@ -16,7 +16,7 @@ pub fn project<ID: Serialize + Hash + Eq>(
         Target::CodeBlockInFile(path) => {
             let prefix = "```toml project";
             let suffix = "```";
-            let content = format!("{prefix}\n{}\n{suffix}", config.to_toml()?.trim_end());
+            let content = format!("{prefix}\n{}\n{suffix}\n", config.to_toml()?.trim_end());
 
             if path.as_ref().exists() {
                 let existing_content = fs::read_to_string(path.as_ref())?;
