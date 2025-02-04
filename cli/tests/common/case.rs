@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 use std::{fs, io, mem};
 
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use assert_cmd::Command;
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Parser, Tag, TagEnd};
 use regex::Regex;
@@ -61,14 +61,11 @@ impl TestCase {
     pub fn run(&self) -> anyhow::Result<()> {
         let mut root_dir = self.root_dir.clone().unwrap_or_default();
         if !root_dir.exists() {
-            return Err(anyhow::anyhow!(
-                "Root directory `{}` does not exist",
-                root_dir.display()
-            ));
+            return Err(anyhow!("Root directory `{}` does not exist", root_dir.display()));
         }
 
         for command in &self.commands {
-            let command_chunks = split_command(command);
+            let command_chunks = split_command_line(command);
 
             match &command_chunks[..] {
                 ["mkdir", pathes @ ..] => {
@@ -90,7 +87,7 @@ impl TestCase {
                         Command::new(name)
                     };
 
-                    let cmd_assert = cmd.args(args).current_dir(&root_dir).assert().success();
+                    let cmd_assert = cmd.args(args).current_dir(&root_dir).assert();
 
                     let stdout = String::from_utf8_lossy(&cmd_assert.get_output().stdout);
                     let stderr = String::from_utf8_lossy(&cmd_assert.get_output().stderr);
@@ -102,7 +99,7 @@ impl TestCase {
 
                     assert_eq!(full_output, expected_output);
                 },
-                _ => return Err(anyhow::anyhow!("Invalid command `{}`", command)),
+                _ => return Err(anyhow!("Invalid command `{}`", command)),
             }
         }
 
@@ -110,7 +107,7 @@ impl TestCase {
     }
 }
 
-fn split_command(command: &str) -> Vec<&str> {
+fn split_command_line(command: &str) -> Vec<&str> {
     static REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#""([^"]+)"|\S+"#).expect("regex must be correct"));
 
     REGEX
@@ -234,9 +231,13 @@ error: destination `~/test A` already exists
 
     #[test]
     fn split_commands() {
-        assert_eq!(split_command("mkdir a b c"), vec!["mkdir", "a", "b", "c"]);
-        assert_eq!(split_command("cd a/b cd \"ef g\""), vec!["cd", "a/b", "cd", "ef g"]);
-        assert_eq!(split_command("echo \"test A\""), vec!["echo", "test A"]);
-        assert_eq!(split_command("echo a \"b c d\" ef"), vec!["echo", "a", "b c d", "ef"]);
+        assert_eq!(split_command_line("mkdir a b c"), vec!["mkdir", "a", "b", "c"]);
+        assert_eq!(split_command_line("cd a/b cd \"ef g\""), vec![
+            "cd", "a/b", "cd", "ef g"
+        ]);
+        assert_eq!(split_command_line("echo \"test A\""), vec!["echo", "test A"]);
+        assert_eq!(split_command_line("echo a \"b c d\" ef"), vec![
+            "echo", "a", "b c d", "ef"
+        ]);
     }
 }

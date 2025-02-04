@@ -1,12 +1,12 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use todo_app::config::Config;
 use todo_tracker_fs::config::ProjectConfig;
 use todo_tracker_fs::{save, Target};
 
-use crate::{eoutln, outln};
+use crate::outln;
 
 pub fn new_project(
     using_manifest: bool,
@@ -16,11 +16,10 @@ pub fn new_project(
     let path_ref = path.as_ref();
 
     let Some(name) = name_from_path(path_ref) else {
-        eoutln!(
-            "Error: path `{}` is not containing a directory name",
+        return Err(anyhow!(
+            "path `{}` is not containing a directory name",
             path_ref.display()
-        );
-        return Ok(());
+        ));
     };
 
     let is_project_name_only = path_ref.iter().count() == 1;
@@ -38,8 +37,7 @@ pub fn new_project(
     }
 
     if full_path.exists() {
-        eoutln!("Error: destination `{}` already exists", full_path.display());
-        return Ok(());
+        return Err(anyhow!("destination `{}` already exists", full_path.display()));
     }
 
     fs::create_dir(&full_path)
