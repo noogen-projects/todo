@@ -246,24 +246,26 @@ $ todo new "test A"
             r#"
 # Some comment
 
+$ mkdir "test A"
 $ todo new "test A"
     Creating `test A` project
-error: destination `~/test A` already exists
+Error: destination `~/test A` already exists
 "#,
             None,
             None,
         );
 
-        assert_eq!(test.commands.len(), 1);
-        assert_eq!(test.commands[0], "todo new \"test A\"");
+        assert_eq!(test.commands.len(), 2);
+        assert_eq!(test.commands[0], "mkdir \"test A\"");
+        assert_eq!(test.commands[1], "todo new \"test A\"");
         assert_eq!(
             test.output.text,
-            "    Creating `test A` project\nerror: destination `~/test A` already exists\n"
+            "    Creating `test A` project\nError: destination `~/test A` already exists\n"
         );
     }
 
     #[test]
-    fn split_commands() {
+    fn split_command() {
         assert_eq!(split_command_line("mkdir a b c"), vec!["mkdir", "a", "b", "c"]);
         assert_eq!(split_command_line("cd a/b cd \"ef g\""), vec![
             "cd", "a/b", "cd", "ef g"
