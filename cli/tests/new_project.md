@@ -66,6 +66,8 @@ Error: destination `${current_dir_path}/test B` already exists
 
 # New subproject
 
+## Prepare parent projects
+
 ```sh
 $ todo new "test A"
     Creating `test A` project
@@ -100,7 +102,7 @@ $ todo new "test A/test B"
 Error: destination `${current_dir_path}/test A/test B` already exists
 ```
 
-## New project with manifest
+## New subproject with manifest
 
 ```sh
 $ todo new --manifest "test B/test B"
