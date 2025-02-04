@@ -64,8 +64,8 @@ impl TestCase {
         self
     }
 
-    pub fn with_root_dir(mut self, root_dir: impl Into<PathBuf>) -> Self {
-        self.test_dir = Some(root_dir.into());
+    pub fn with_test_dir(mut self, test_dir: impl Into<PathBuf>) -> Self {
+        self.test_dir = Some(test_dir.into());
         self
     }
 
