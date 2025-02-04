@@ -16,12 +16,19 @@ pub struct TestSection {
 pub struct TestCase {
     pub commands: Vec<String>,
     pub cargo_bin_alias: String,
-    pub root_dir: Option<PathBuf>,
-    pub expected_output: String,
+    pub test_dir: Option<PathBuf>,
+    pub output: ExpectedOutput,
+}
+
+#[derive(Debug, Default)]
+pub struct ExpectedOutput {
+    pub text: String,
+    pub source_path: Option<PathBuf>,
+    pub source_line: Option<usize>,
 }
 
 impl TestCase {
-    pub fn parse(source: impl AsRef<str>) -> Self {
+    pub fn parse(source: impl AsRef<str>, source_path: Option<PathBuf>, source_line: Option<usize>) -> Self {
         let mut commands = Vec::new();
         let mut expected_output = String::new();
 
@@ -43,8 +50,12 @@ impl TestCase {
         Self {
             commands,
             cargo_bin_alias: String::new(),
-            root_dir: None,
-            expected_output,
+            test_dir: None,
+            output: ExpectedOutput {
+                text: expected_output,
+                source_path,
+                source_line,
+            },
         }
     }
 
@@ -54,12 +65,12 @@ impl TestCase {
     }
 
     pub fn with_root_dir(mut self, root_dir: impl Into<PathBuf>) -> Self {
-        self.root_dir = Some(root_dir.into());
+        self.test_dir = Some(root_dir.into());
         self
     }
 
     pub fn run(&self) -> anyhow::Result<()> {
-        let mut root_dir = self.root_dir.clone().unwrap_or_default();
+        let mut root_dir = self.test_dir.clone().unwrap_or_default();
         if !root_dir.exists() {
             return Err(anyhow!("Root directory `{}` does not exist", root_dir.display()));
         }
@@ -94,10 +105,22 @@ impl TestCase {
                     let full_output = format!("{}{}", stdout, stderr);
 
                     let expected_output = self
-                        .expected_output
+                        .output
+                        .text
                         .replace("${current_dir_path}", &root_dir.to_string_lossy());
 
-                    assert_eq!(full_output, expected_output);
+                    let source_path = self
+                        .output
+                        .source_path
+                        .as_ref()
+                        .map(|path| path.display().to_string())
+                        .unwrap_or_default();
+                    let source_line = self.output.source_line.unwrap_or_default();
+
+                    assert_eq!(
+                        full_output, expected_output,
+                        "Command `{command}` in source {source_path}:{source_line}"
+                    );
                 },
                 _ => return Err(anyhow!("Invalid command `{}`", command)),
             }
@@ -120,28 +143,32 @@ pub fn parse_tests_from_markdown(
     md_file_path: impl AsRef<Path>,
     cargo_bin_alias: Option<impl Into<String> + Clone>,
 ) -> io::Result<Vec<TestSection>> {
+    let md_file_path = md_file_path.as_ref();
     let content = fs::read_to_string(md_file_path)?;
     let parser = Parser::new(&content);
 
     let mut sections = Vec::new();
     let mut cases = Vec::new();
     let mut test_case = None;
+    let mut test_case_start_line = None;
     let mut section_title = String::new();
     let mut in_test_case_code_block = false;
     let mut in_section_heading = false;
 
-    for event in parser {
+    for (event, range) in parser.into_offset_iter() {
         match event {
             Event::Start(Tag::CodeBlock(CodeBlockKind::Fenced(lang)))
                 if lang.as_ref() == "sh" || lang.as_ref() == "shell" =>
             {
                 in_test_case_code_block = true;
+                test_case_start_line = Some(content.split_at(range.start).0.lines().count() + 1);
             },
             Event::Text(text) if in_test_case_code_block => {
+                let new_test_case = TestCase::parse(text, Some(md_file_path.into()), test_case_start_line);
                 test_case = Some(if let Some(alias) = cargo_bin_alias.clone() {
-                    TestCase::parse(text).with_cargo_bin_alias(alias)
+                    new_test_case.with_cargo_bin_alias(alias)
                 } else {
-                    TestCase::parse(text)
+                    new_test_case
                 });
             },
             Event::End(TagEnd::CodeBlock) if in_test_case_code_block => {
@@ -194,22 +221,26 @@ mod test {
 $ todo new "test A"
     Creating `test A` project
 "#,
+            None,
+            None,
         );
 
         assert_eq!(test.commands.len(), 1);
         assert_eq!(test.commands[0], "todo new \"test A\"");
-        assert_eq!(test.expected_output, "    Creating `test A` project\n");
+        assert_eq!(test.output.text, "    Creating `test A` project\n");
 
         let test = TestCase::parse(
             r#"
 # Some comment
 $ todo new "test A"
     Creating `test A` project"#,
+            None,
+            None,
         );
 
         assert_eq!(test.commands.len(), 1);
         assert_eq!(test.commands[0], "todo new \"test A\"");
-        assert_eq!(test.expected_output, "    Creating `test A` project");
+        assert_eq!(test.output.text, "    Creating `test A` project");
 
         let test = TestCase::parse(
             r#"
@@ -219,12 +250,14 @@ $ todo new "test A"
     Creating `test A` project
 error: destination `~/test A` already exists
 "#,
+            None,
+            None,
         );
 
         assert_eq!(test.commands.len(), 1);
         assert_eq!(test.commands[0], "todo new \"test A\"");
         assert_eq!(
-            test.expected_output,
+            test.output.text,
             "    Creating `test A` project\nerror: destination `~/test A` already exists\n"
         );
     }
