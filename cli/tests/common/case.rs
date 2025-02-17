@@ -1,11 +1,11 @@
 use std::path::{Path, PathBuf};
-use std::sync::LazyLock;
 use std::{fs, io, mem};
 
-use anyhow::{anyhow, Context};
+use anyhow::anyhow;
 use assert_cmd::Command;
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Parser, Tag, TagEnd};
-use regex::Regex;
+
+use super::cmd::{Cmd, CmdResponse};
 
 pub struct TestSection {
     pub title: String,
@@ -76,67 +76,60 @@ impl TestCase {
         }
 
         for command in &self.commands {
-            let command_chunks = split_command_line(command);
+            match Cmd::parse(&root_dir, &command) {
+                Ok(cmd) => match cmd.run()? {
+                    CmdResponse::Success => (),
+                    CmdResponse::ChangeDirTo(path) => root_dir = path,
+                    CmdResponse::Output(output) => self.assert_command_output(&root_dir, command, output),
+                },
+                Err(parts) => {
+                    if let [name, args @ ..] = &parts[..] {
+                        let mut cmd = if *name == self.cargo_bin_alias {
+                            Command::cargo_bin(env!("CARGO_PKG_NAME"))?
+                        } else {
+                            Command::cargo_bin(name)?
+                        };
 
-            match &command_chunks[..] {
-                ["mkdir", pathes @ ..] => {
-                    for path in pathes {
-                        let dir = root_dir.join(path);
-                        fs::create_dir_all(&dir)
-                            .with_context(|| format!("Failed to create directory `{}`", dir.display()))?;
+                        let cmd_assert = cmd.args(args).current_dir(&root_dir).assert();
+
+                        let stdout = String::from_utf8_lossy(&cmd_assert.get_output().stdout);
+                        let stderr = String::from_utf8_lossy(&cmd_assert.get_output().stderr);
+                        let full_output = format!("{}{}", stdout, stderr);
+
+                        self.assert_command_output(&root_dir, command, full_output);
+                    } else {
+                        return Err(anyhow!("Invalid command `{}`", command));
                     }
                 },
-                ["cd", path] => {
-                    let dir = root_dir.join(path);
-                    Command::new("cd").arg(&dir).assert().success();
-                    root_dir = dir;
-                },
-                [name, args @ ..] => {
-                    let mut cmd = if *name == self.cargo_bin_alias {
-                        Command::cargo_bin(env!("CARGO_PKG_NAME"))?
-                    } else {
-                        Command::new(name)
-                    };
-
-                    let cmd_assert = cmd.args(args).current_dir(&root_dir).assert();
-
-                    let stdout = String::from_utf8_lossy(&cmd_assert.get_output().stdout);
-                    let stderr = String::from_utf8_lossy(&cmd_assert.get_output().stderr);
-                    let full_output = format!("{}{}", stdout, stderr);
-
-                    let expected_output = self
-                        .output
-                        .text
-                        .replace("${current_dir_path}", &root_dir.to_string_lossy());
-
-                    let source_path = self
-                        .output
-                        .source_path
-                        .as_ref()
-                        .map(|path| path.display().to_string())
-                        .unwrap_or_default();
-                    let source_line = self.output.source_line.unwrap_or_default();
-
-                    assert_eq!(
-                        full_output, expected_output,
-                        "Command `{command}` in source {source_path}:{source_line}"
-                    );
-                },
-                _ => return Err(anyhow!("Invalid command `{}`", command)),
             }
         }
 
         Ok(())
     }
-}
 
-fn split_command_line(command: &str) -> Vec<&str> {
-    static REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#""([^"]+)"|\S+"#).expect("regex must be correct"));
+    pub fn assert_command_output(&self, root_dir: impl AsRef<Path>, command: impl AsRef<str>, output: impl AsRef<str>) {
+        let root_dir = root_dir.as_ref();
+        let command = command.as_ref();
+        let output = output.as_ref();
 
-    REGEX
-        .find_iter(command.as_ref())
-        .map(|found| found.as_str().trim_matches('"'))
-        .collect()
+        let expected_output = self
+            .output
+            .text
+            .replace("${current_dir_path}", &root_dir.to_string_lossy());
+
+        let source_path = self
+            .output
+            .source_path
+            .as_ref()
+            .map(|path| path.display().to_string())
+            .unwrap_or_default();
+        let source_line = self.output.source_line.unwrap_or_default();
+
+        assert_eq!(
+            output, expected_output,
+            "Command `{command}` in source {source_path}:{source_line}"
+        );
+    }
 }
 
 pub fn parse_tests_from_markdown(
@@ -211,7 +204,7 @@ pub fn parse_tests_from_markdown(
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     #[test]
@@ -262,17 +255,5 @@ Error: destination `~/test A` already exists
             test.output.text,
             "    Creating `test A` project\nError: destination `~/test A` already exists\n"
         );
-    }
-
-    #[test]
-    fn split_command() {
-        assert_eq!(split_command_line("mkdir a b c"), vec!["mkdir", "a", "b", "c"]);
-        assert_eq!(split_command_line("cd a/b cd \"ef g\""), vec![
-            "cd", "a/b", "cd", "ef g"
-        ]);
-        assert_eq!(split_command_line("echo \"test A\""), vec!["echo", "test A"]);
-        assert_eq!(split_command_line("echo a \"b c d\" ef"), vec![
-            "echo", "a", "b c d", "ef"
-        ]);
     }
 }

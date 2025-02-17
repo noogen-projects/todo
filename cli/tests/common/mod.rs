@@ -4,6 +4,7 @@ use std::path::Path;
 use self::case::TestSection;
 
 pub mod case;
+pub mod cmd;
 
 pub const CARGO_BIN_ALIAS: &str = "todo";
 
