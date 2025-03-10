@@ -12,7 +12,7 @@ todo-lib = { path = "../lib" }
 todo-tracker-fs = { path = "../tracker-fs" }
 
 [dev-dependencies]
-regex = "1.11"
+regex = { workspace = true }
 temp_testdir = "0.2"
 assert_cmd = "2.0"
-pulldown-cmark = "0.12"
+pulldown-cmark = "0.13"
