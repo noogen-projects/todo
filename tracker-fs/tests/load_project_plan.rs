@@ -10,7 +10,7 @@ use todo_lib::issue::{Issue, Milestone};
 use todo_lib::plan::Plan;
 use todo_lib::plan::Step::*;
 use todo_tracker_fs::generator::IntIdGenerator;
-use todo_tracker_fs::Target;
+use todo_tracker_fs::Placement;
 
 static TASK_LIST_TEXT: &'static str = r"
 - task A
@@ -166,7 +166,7 @@ fn tasks_from_todo_file() -> anyhow::Result<()> {
     File::create(todo_file_path.clone())?.write_all(TASK_LIST_TEXT.as_bytes())?;
 
     let id_generator = IntIdGenerator::new(1);
-    let plan = todo_tracker_fs::load::project_plan(Target::WholeFile(todo_file_path), &id_generator).unwrap()?;
+    let plan = todo_tracker_fs::load::project_plan(Placement::WholeFile(todo_file_path), &id_generator).unwrap()?;
 
     assert_task_list_plan(&plan);
 
@@ -219,7 +219,7 @@ List 3:
 
     let id_generator = IntIdGenerator::new(1);
     let plan =
-        todo_tracker_fs::load::project_plan(Target::CodeBlockInFile(manifest_file_path), &id_generator).unwrap()?;
+        todo_tracker_fs::load::project_plan(Placement::CodeBlockInFile(manifest_file_path), &id_generator).unwrap()?;
 
     assert_task_list_plan(&plan);
 
