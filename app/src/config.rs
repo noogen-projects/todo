@@ -8,6 +8,10 @@ use indexmap::{IndexMap, IndexSet};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use todo_tracker_fs::config::{LoadConfigError, ProjectConfig as TrackerProjectConfig};
+use todo_tracker_fs::file::{find_file_in_dir_and_parents, find_in_dir_by_name_part};
+use todo_tracker_fs::Placement;
+
+use crate::issue::Order;
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 #[serde(default)]
@@ -68,6 +72,29 @@ impl ListProjectsConfig {
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 #[serde(default)]
+pub struct IssueConfig {
+    #[serde(default)]
+    pub add_order: IssueAddOrder,
+}
+
+#[derive(Copy, Clone, Default, Debug, Deserialize, Serialize)]
+pub enum IssueAddOrder {
+    #[default]
+    First,
+    Last,
+}
+
+impl IssueAddOrder {
+    pub fn into_order(self) -> Order {
+        match self {
+            Self::First => Order::First,
+            Self::Last => Order::Last,
+        }
+    }
+}
+
+#[derive(Debug, Default, Deserialize, Serialize)]
+#[serde(default)]
 pub struct ProjectConfig {
     pub path: Option<PathBuf>,
 
@@ -78,24 +105,19 @@ impl ProjectConfig {
     pub fn load_tracker_project_config(
         &self,
         project_id: impl Into<String>,
-        project_config_file_name: impl AsRef<Path>,
-        projects_root_dir: Option<impl Into<PathBuf>>,
+        config: &SourceConfig,
     ) -> Option<Result<TrackerProjectConfig, LoadConfigError>> {
         let mut project_path = self.path.clone()?;
 
-        if let Some(projects_root_dir) = projects_root_dir {
+        if let Some(projects_root_dir) = &config.projects_root_dir {
             if project_path.is_relative() {
-                project_path = projects_root_dir.into().join(project_path)
+                project_path = projects_root_dir.join(project_path)
             }
         }
 
-        let project_config_file_path = if project_path.is_dir() {
-            project_path.join(project_config_file_name)
-        } else {
-            project_path.clone()
-        };
+        let config_placement = config.find_config_placement(&project_path, None)?;
 
-        let mut config = match TrackerProjectConfig::load(project_config_file_path) {
+        let mut config = match TrackerProjectConfig::load(&config_placement) {
             Ok(config) => config,
             Err(err) => {
                 if project_path.is_dir() {
@@ -106,7 +128,7 @@ impl ProjectConfig {
             },
         };
 
-        config.path = Some(project_path);
+        config.root_dir = Some(project_path);
         if !self.subprojects.is_empty() {
             config.subprojects.clone_from(&self.subprojects);
         }
@@ -140,14 +162,17 @@ pub struct DisplayConfig {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(default)]
 pub struct SourceConfig {
+    #[serde(default = "SourceConfig::default_use_manifest_file_by_default")]
+    pub use_manifest_file_by_default: bool,
+
     #[serde(default = "SourceConfig::default_manifest_filename_regex", with = "serde_regex")]
     pub manifest_filename_regex: Regex,
 
     #[serde(default = "SourceConfig::default_manifest_filename_example")]
     pub manifest_filename_example: String,
 
-    #[serde(default = "SourceConfig::default_todo_filename_regex", with = "serde_regex")]
-    pub todo_filename_regex: Regex,
+    #[serde(default = "SourceConfig::default_issues_filename_regex", with = "serde_regex")]
+    pub issues_filename_regex: Regex,
 
     #[serde(default = "SourceConfig::default_project_config_file")]
     pub project_config_file: PathBuf,
@@ -158,9 +183,10 @@ pub struct SourceConfig {
 impl Default for SourceConfig {
     fn default() -> Self {
         Self {
+            use_manifest_file_by_default: Self::default_use_manifest_file_by_default(),
             manifest_filename_regex: Self::default_manifest_filename_regex(),
             manifest_filename_example: Self::default_manifest_filename_example(),
-            todo_filename_regex: Self::default_todo_filename_regex(),
+            issues_filename_regex: Self::default_issues_filename_regex(),
             project_config_file: Self::default_project_config_file(),
             projects_root_dir: None,
         }
@@ -168,6 +194,10 @@ impl Default for SourceConfig {
 }
 
 impl SourceConfig {
+    pub const fn default_use_manifest_file_by_default() -> bool {
+        false
+    }
+
     pub fn default_manifest_filename_regex() -> Regex {
         Regex::new("(.*)\\.manifest\\.md$").expect("regex mus be correct")
     }
@@ -176,12 +206,54 @@ impl SourceConfig {
         "example.manifest.md".into()
     }
 
-    pub fn default_todo_filename_regex() -> Regex {
+    pub fn default_issues_filename_regex() -> Regex {
         Regex::new("^TODO\\.md$").expect("regex mus be correct")
     }
 
     pub fn default_project_config_file() -> PathBuf {
         "Project.toml".into()
+    }
+
+    pub fn manifest_example_project_name(&self) -> &str {
+        self.manifest_filename_regex
+            .captures(&self.manifest_filename_example)
+            .and_then(|captures| captures.get(1))
+            .map(|name| name.as_str())
+            .unwrap_or_default()
+    }
+
+    pub fn project_manifest_file_name(&self, project_name: impl AsRef<str>) -> String {
+        let example_project_name = self.manifest_example_project_name();
+        if example_project_name.is_empty() {
+            self.manifest_filename_example.clone()
+        } else {
+            self.manifest_filename_example
+                .replace(example_project_name, project_name.as_ref())
+        }
+    }
+
+    pub fn find_config_placement(
+        &self,
+        root_dir: impl AsRef<Path>,
+        project_name: Option<&str>,
+    ) -> Option<Placement<PathBuf>> {
+        let root_dir = root_dir.as_ref();
+        let project_config_file = root_dir.join(&self.project_config_file);
+
+        if project_config_file.exists() {
+            Some(Placement::WholeFile(project_config_file))
+        } else {
+            let manifest_file = if let Some(name) = project_name {
+                root_dir.join(self.project_manifest_file_name(name))
+            } else {
+                let manifest_file_name_part = self.project_manifest_file_name("");
+                find_in_dir_by_name_part(root_dir, &manifest_file_name_part)?
+            };
+
+            manifest_file
+                .exists()
+                .then(|| Placement::CodeBlockInFile(manifest_file))
+        }
     }
 }
 
@@ -195,6 +267,8 @@ pub struct Config {
     pub search: SearchConfig,
 
     pub list: ListConfig,
+
+    pub issue: IssueConfig,
 
     pub project: IndexMap<String, ProjectConfig>,
 }
@@ -245,7 +319,6 @@ pub struct ConfigLoader {
     config_file_name: String,
     root_config_file: PathBuf,
     config_file: Option<PathBuf>,
-    project_dir: Option<PathBuf>,
 }
 
 impl Default for ConfigLoader {
@@ -259,7 +332,6 @@ impl Default for ConfigLoader {
             config_file_name: DEFAULT_CONFIG_FILE_NAME.into(),
             root_config_file,
             config_file: None,
-            project_dir: None,
         }
     }
 }
@@ -285,16 +357,6 @@ impl ConfigLoader {
         self
     }
 
-    pub fn with_project_dir(mut self, project_dir: impl Into<PathBuf>) -> Self {
-        self.project_dir = Some(project_dir.into());
-        self
-    }
-
-    pub fn maybe_with_project_dir(mut self, project_dir: Option<impl Into<PathBuf>>) -> Self {
-        self.project_dir = project_dir.map(Into::into);
-        self
-    }
-
     pub fn config_file_name(&self) -> &str {
         &self.config_file_name
     }
@@ -308,7 +370,6 @@ impl ConfigLoader {
             config_file_name,
             root_config_file,
             config_file,
-            project_dir,
         } = self;
         let mut config_builder = ConfigBuilder::default();
 
@@ -323,22 +384,10 @@ impl ConfigLoader {
             config_builder.add_path(&root_config_file);
         }
 
-        let mut project_dir = project_dir.map(Ok).unwrap_or_else(env::current_dir)?;
-        let mut config_file = config_file.unwrap_or_else(|| project_dir.join(&config_file_name));
-
-        if !config_file.exists() {
-            let mut current_dir = project_dir.clone();
-            while let Some(next_dir) = current_dir.parent().map(ToOwned::to_owned) {
-                let next_config_file: PathBuf = next_dir.join(&config_file_name);
-                if next_config_file.exists() {
-                    project_dir = next_dir;
-                    config_file = next_config_file;
-                    break;
-                } else {
-                    current_dir = next_dir;
-                }
-            }
-        }
+        let config_dir = env::current_dir()?;
+        let config_file = config_file
+            .or_else(|| find_file_in_dir_and_parents(&config_dir, &config_file_name))
+            .unwrap_or_else(|| config_dir.join(&config_file_name));
 
         if config_file.exists() {
             config_builder.add_path(&config_file);
@@ -348,7 +397,6 @@ impl ConfigLoader {
             config: config_builder.build()?,
             root_config_file,
             config_file,
-            project_dir,
         })
     }
 }
@@ -357,5 +405,4 @@ pub struct ConfigProfile {
     pub config: Config,
     pub root_config_file: PathBuf,
     pub config_file: PathBuf,
-    pub project_dir: PathBuf,
 }
