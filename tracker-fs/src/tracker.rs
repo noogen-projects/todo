@@ -1,10 +1,10 @@
 use std::collections::HashMap;
-use std::hash::Hash;
 use std::io;
 use std::path::{Path, PathBuf};
 
 use indexmap::{IndexMap, IndexSet};
 use regex::Regex;
+use todo_lib::id::HashedId;
 use todo_lib::plan::Plan;
 use todo_lib::project::Project;
 use walkdir::{DirEntry, WalkDir};
@@ -22,7 +22,7 @@ pub struct FsTracker<PID = String, ID = u64> {
     planes: HashMap<PID, Plan<ID>>,
 }
 
-impl<PID: Clone + Hash + Eq> FsTracker<PID> {
+impl<PID: HashedId + Clone> FsTracker<PID> {
     pub fn new(
         project_configs: IndexMap<PID, ProjectConfig<PID>>,
         manifest_filename_regex: &Regex,
@@ -103,7 +103,7 @@ fn load_project_plan<PID>(
     todo_filename_regex: &Regex,
 ) -> io::Result<Option<Plan<u64>>>
 where
-    PID: Hash + Eq,
+    PID: HashedId,
 {
     let Some(project_root) = project_config.root_dir.clone() else {
         return Ok(None);

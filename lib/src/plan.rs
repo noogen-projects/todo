@@ -1,5 +1,6 @@
 use indexmap::{IndexMap, IndexSet};
 
+use crate::id::HashedId;
 use crate::issue::{Issue, Milestone};
 
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
@@ -25,7 +26,7 @@ impl<ID> Plan<ID> {
     }
 }
 
-impl<ID: std::hash::Hash + Eq + PartialEq + Clone> Plan<ID> {
+impl<ID: HashedId + PartialEq + Clone> Plan<ID> {
     pub fn is_empty(&self) -> bool {
         let Self {
             issues,

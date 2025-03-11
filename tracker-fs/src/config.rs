@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::hash::Hash;
 use std::io;
 use std::path::{Path, PathBuf};
 
@@ -7,6 +6,7 @@ use fs_err as fs;
 use indexmap::IndexSet;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use todo_lib::id::HashedId;
 use walkdir::WalkDir;
 
 use crate::Placement;
@@ -29,8 +29,14 @@ pub enum SaveConfigError {
     FailToSerialize(#[from] toml::ser::Error),
 }
 
+pub trait SerializedId: Serialize + HashedId {}
+impl<T> SerializedId for T where T: Serialize + HashedId {}
+
+pub trait DeserializedId: for<'a> Deserialize<'a> + HashedId {}
+impl<T> DeserializedId for T where T: for<'a> Deserialize<'a> + HashedId {}
+
 #[derive(Debug, Serialize, Deserialize)]
-pub struct ProjectConfig<ID: Hash + Eq = String> {
+pub struct ProjectConfig<ID: HashedId = String> {
     pub id: ID,
 
     pub name: Option<String>,
@@ -49,7 +55,7 @@ pub struct ProjectConfig<ID: Hash + Eq = String> {
     pub subprojects: IndexSet<ID>,
 }
 
-impl<ID: Hash + Eq> ProjectConfig<ID> {
+impl<ID: HashedId> ProjectConfig<ID> {
     const MD_BLOCK_PREFIX: &'static str = "```toml project";
     const MD_BLOCK_SUFFIX: &'static str = "```";
 
@@ -69,9 +75,14 @@ impl<ID: Hash + Eq> ProjectConfig<ID> {
         self.name = Some(name);
         self
     }
+
+    pub fn with_root_dir(mut self, root_dir: PathBuf) -> Self {
+        self.root_dir = Some(root_dir);
+        self
+    }
 }
 
-impl<ID: for<'a> Deserialize<'a> + Hash + Eq> ProjectConfig<ID> {
+impl<ID: DeserializedId> ProjectConfig<ID> {
     pub fn from_toml(content: &str) -> Result<Self, toml::de::Error> {
         toml::from_str(content)
     }
@@ -103,9 +114,6 @@ impl<ID: for<'a> Deserialize<'a> + Hash + Eq> ProjectConfig<ID> {
         }
     }
 }
-
-pub trait SerializedId: Serialize + Hash + Eq {}
-impl<T> SerializedId for T where T: Serialize + Hash + Eq {}
 
 impl<ID: SerializedId> ProjectConfig<ID> {
     pub fn to_toml(&self) -> Result<String, toml::ser::Error> {
@@ -160,19 +168,19 @@ impl<ID: SerializedId> ProjectConfig<ID> {
     }
 }
 
-pub fn find_projects<ID: for<'a> Deserialize<'a> + Hash + Eq + Ord + Clone>(
+pub fn find_projects<ID>(
     search_roots: impl IntoIterator<Item = impl AsRef<Path>>,
-    project_config_placement_relative: Placement<impl AsRef<Path> + Clone>,
-) -> BTreeMap<ID, ProjectConfig<ID>> {
+    get_project_config_placement: impl Fn(&Path) -> Option<Placement<PathBuf>>,
+) -> BTreeMap<ID, ProjectConfig<ID>>
+where
+    ID: DeserializedId + Ord + Clone,
+{
     let mut projects = BTreeMap::new();
 
     for root in search_roots {
         for entry in WalkDir::new(root).follow_links(true).into_iter().filter_map(Result::ok) {
             let path = entry.path();
-            let project_config_placement =
-                project_config_placement_relative.map_ref(|relative_path| path.join(relative_path.as_ref()));
-
-            if project_config_placement.as_ref().exists() {
+            if let Some(project_config_placement) = get_project_config_placement(path) {
                 if let Ok(mut project_config) = ProjectConfig::<ID>::load(&project_config_placement) {
                     if project_config.root_dir.is_none() {
                         project_config.root_dir = Some(path.to_owned());
