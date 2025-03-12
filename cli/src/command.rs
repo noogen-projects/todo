@@ -1,77 +1,52 @@
-use std::fs;
-use std::path::{Path, PathBuf};
-
-use anyhow::{anyhow, Context};
+use anyhow::Context;
 use todo_app::config::Config;
-use todo_tracker_fs::config::ProjectConfig;
-use todo_tracker_fs::{save, Target};
+use todo_app::issue;
+use todo_app::project::{self, FsProjectData, ProjectData};
+use todo_app::target::Location;
 
+use crate::opts::{Order, ProjectLocation};
 use crate::outln;
 
-pub fn new_project(
-    using_manifest: bool,
-    path: impl Into<PathBuf> + AsRef<Path>,
-    config: &Config,
-) -> anyhow::Result<()> {
-    let path_ref = path.as_ref();
+pub fn new_project(use_manifest: bool, location: impl Into<String>, config: &Config) -> anyhow::Result<()> {
+    let location = Location::<String>::from_unknown(location);
+    let project_data = FsProjectData::new(location, &config.source, use_manifest)?;
+    let name = &project_data.name;
 
-    let Some(name) = name_from_path(path_ref) else {
-        return Err(anyhow!(
-            "path `{}` is not containing a directory name",
-            path_ref.display()
-        ));
-    };
-
-    let is_project_name_only = path_ref.iter().count() == 1;
-    let full_path = if path_ref.is_relative() {
-        std::env::current_dir()?.join(path)
-    } else {
-        path.into()
-    };
-
-    if is_project_name_only {
+    if project_data.is_current_dir_parent {
         outln!("    Creating `{name}` project");
     } else {
-        let parent_path = full_path.parent().context("Full path must have a parent")?;
+        let parent_path = project_data.root_dir.parent().context("Full path must have a parent")?;
         outln!("    Creating `{name}` project under `{}`", parent_path.display());
     }
 
-    if full_path.exists() {
-        return Err(anyhow!("destination `{}` already exists", full_path.display()));
-    }
-
-    fs::create_dir(&full_path)
-        .with_context(|| format!("Failed to create project directory {}", full_path.display()))?;
-
-    let destination = if using_manifest {
-        let example_project_name = config
-            .source
-            .manifest_filename_regex
-            .captures(&config.source.manifest_filename_example)
-            .and_then(|captures| captures.get(1))
-            .map(|name| name.as_str())
-            .unwrap_or_default();
-
-        let filename = if example_project_name.is_empty() {
-            name.clone()
-        } else {
-            config
-                .source
-                .manifest_filename_example
-                .replace(example_project_name, &name)
-        };
-
-        Target::CodeBlockInFile(full_path.join(filename))
-    } else {
-        Target::WholeFile(full_path.join(&config.source.project_config_file))
-    };
-
-    let project_config = ProjectConfig::new(name.clone()).with_name(name);
-    save::project(&project_config, destination)?;
-
+    project::create(ProjectData::Fs(project_data))?;
     Ok(())
 }
 
-fn name_from_path(path: impl AsRef<Path>) -> Option<String> {
-    path.as_ref().file_name().map(|name| name.to_string_lossy().into())
+pub fn add_issue(
+    location: ProjectLocation,
+    order: Order,
+    name: impl AsRef<str> + Into<String>,
+    config: &Config,
+) -> anyhow::Result<()> {
+    let location = if let Some(location) = location.into_location() {
+        location
+    } else {
+        project::default_location(&config.source)?
+    };
+    let order = order
+        .into_order()
+        .unwrap_or_else(|| config.issue.add_order.into_order());
+
+    let mut project_data = FsProjectData::exists(location, &config.source)?;
+    project_data.update_from_config()?;
+
+    outln!(
+        "    Adding `{}` issue to `{}` project",
+        name.as_ref(),
+        project_data.name
+    );
+
+    issue::add(ProjectData::Fs(project_data), &config.source, order, name, "")?;
+    Ok(())
 }

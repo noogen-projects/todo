@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 anyhow = { workspace = true }
 clap = { version = "4.3", features = ["derive"] }
+either = "1.15.0"
 indexmap = { workspace = true }
 todo-app = { path = "../app" }
 todo-lib = { path = "../lib" }

@@ -1,15 +1,17 @@
-use std::hash::Hash;
 use std::io::{self, BufRead};
 use std::path::Path;
 use std::str::FromStr;
 
+use either::Either;
 use fs_err as fs;
 use indexmap::IndexMap;
+use todo_lib::id::HashedId;
 use todo_lib::issue::Issue;
 use todo_lib::plan::Plan;
 
 use self::parse::Item;
 use crate::generator::IdGenerator;
+use crate::issue::{MD_BLOCK_END, MD_BLOCK_START};
 use crate::Placement;
 
 pub mod parse;
@@ -18,6 +20,11 @@ pub trait LoadProjectPlan<GEN> {
     type Id;
 
     fn load(source: &Placement<impl AsRef<Path>>, id_generator: GEN) -> io::Result<Option<Plan<Self::Id>>>;
+
+    fn load_to_lines(
+        source: &Placement<impl AsRef<Path>>,
+    ) -> io::Result<impl IntoIterator<Item = (usize, io::Result<String>)>>;
+
     fn load_from_lines(
         lines: impl IntoIterator<Item = (usize, io::Result<String>)>,
         id_generator: GEN,
@@ -26,55 +33,63 @@ pub trait LoadProjectPlan<GEN> {
 
 impl<ID, GEN> LoadProjectPlan<GEN> for Plan<ID>
 where
-    ID: Hash + Eq + Clone + FromStr,
+    ID: HashedId + Clone + FromStr,
     GEN: IdGenerator<Id = ID> + Copy,
 {
     type Id = ID;
 
     fn load(source: &Placement<impl AsRef<Path>>, id_generator: GEN) -> io::Result<Option<Plan<Self::Id>>> {
         if source.as_ref().as_ref().exists() {
-            Ok(Some(match source {
-                Placement::WholeFile(path) => fs::File::open(path.as_ref()).and_then(|file| {
-                    Self::load_from_lines(io::BufReader::new(file).lines().enumerate(), id_generator)
-                })?,
-                Placement::CodeBlockInFile(path) => {
-                    let file = fs::File::open(path.as_ref())?;
+            let lines = <Self as LoadProjectPlan<GEN>>::load_to_lines(source)?;
+            let plan = Self::load_from_lines(lines, id_generator)?;
 
-                    let mut in_block = false;
-                    let mut inner_blocks: usize = 0;
-                    let lines = io::BufReader::new(file).lines().enumerate().filter(|(_, line)| {
-                        let Ok(line) = line else {
-                            return false;
-                        };
-
-                        if !in_block {
-                            let prefix = "```md todo";
-                            if let Some(start) = line.get(..line.len().min(prefix.len() + 1)) {
-                                if start.trim().to_lowercase() == prefix {
-                                    in_block = true;
-                                }
-                            }
-                            false
-                        } else {
-                            let line = line.trim_end();
-                            if line.starts_with("```") {
-                                if line.chars().nth(3).map(|ch| !ch.is_whitespace()).unwrap_or(false) {
-                                    inner_blocks += 1;
-                                } else if inner_blocks == 0 {
-                                    in_block = false;
-                                } else {
-                                    inner_blocks -= 1;
-                                }
-                            }
-                            in_block
-                        }
-                    });
-                    Self::load_from_lines(lines, id_generator)?
-                },
-            }))
+            Ok(Some(plan))
         } else {
             Ok(None)
         }
+    }
+
+    fn load_to_lines(
+        source: &Placement<impl AsRef<Path>>,
+    ) -> io::Result<impl IntoIterator<Item = (usize, io::Result<String>)>> {
+        Ok(match source {
+            Placement::WholeFile(path) => {
+                let file = fs::File::open(path.as_ref())?;
+                Either::Left(io::BufReader::new(file).lines().enumerate())
+            },
+            Placement::CodeBlockInFile(path) => {
+                let file = fs::File::open(path.as_ref())?;
+
+                let mut in_block = false;
+                let mut inner_blocks: usize = 0;
+                Either::Right(io::BufReader::new(file).lines().enumerate().filter(move |(_, line)| {
+                    let Ok(line) = line else {
+                        return false;
+                    };
+
+                    if !in_block {
+                        if let Some(start) = line.get(..line.len().min(MD_BLOCK_START.len() + 1)) {
+                            if start.trim().to_lowercase() == MD_BLOCK_START {
+                                in_block = true;
+                            }
+                        }
+                        false
+                    } else {
+                        let line = line.trim_end();
+                        if line.starts_with(MD_BLOCK_END) {
+                            if line.chars().nth(3).map(|ch| !ch.is_whitespace()).unwrap_or(false) {
+                                inner_blocks += 1;
+                            } else if inner_blocks == 0 {
+                                in_block = false;
+                            } else {
+                                inner_blocks -= 1;
+                            }
+                        }
+                        in_block
+                    }
+                }))
+            },
+        })
     }
 
     fn load_from_lines(
@@ -202,7 +217,7 @@ struct Last<ID> {
     parsed_issues: IndexMap<ID, Issue<ID>>,
 }
 
-impl<ID: Hash + Eq + PartialEq + Clone> Last<ID> {
+impl<ID: HashedId + PartialEq + Clone> Last<ID> {
     fn new() -> Self {
         Self {
             issue_level: 0,

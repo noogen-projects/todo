@@ -7,9 +7,9 @@ use regex::Regex;
 use todo_lib::id::HashedId;
 use todo_lib::plan::Plan;
 use todo_lib::project::Project;
-use walkdir::{DirEntry, WalkDir};
 
 use crate::config::ProjectConfig;
+use crate::file::find_by_regex;
 use crate::generator::IntIdGenerator;
 use crate::plan::LoadProjectPlan;
 use crate::project::LoadProject;
@@ -86,21 +86,10 @@ impl<PID: HashedId + Clone> FsTracker<PID> {
     }
 }
 
-pub fn find_match_files<'a>(root_dir: &Path, regex: &'a Regex) -> impl Iterator<Item = DirEntry> + 'a {
-    WalkDir::new(root_dir)
-        .max_depth(1)
-        .into_iter()
-        .filter_map(|entry| entry.ok())
-        .filter(|entry| {
-            let file_name = entry.file_name().to_string_lossy();
-            regex.is_match(file_name.as_ref())
-        })
-}
-
-fn load_project_plan<PID>(
+pub fn load_project_plan<PID>(
     project_config: &ProjectConfig<PID>,
     manifest_filename_regex: &Regex,
-    todo_filename_regex: &Regex,
+    issues_filename_regex: &Regex,
 ) -> io::Result<Option<Plan<u64>>>
 where
     PID: HashedId,
@@ -112,25 +101,17 @@ where
     let mut plan = Plan::new();
     let mut plan_exists = false;
 
-    let manifest_file_path = find_match_files(&project_root, manifest_filename_regex)
-        .next()
-        .map(|entry| entry.into_path());
-    let todo_file_path = find_match_files(&project_root, todo_filename_regex)
-        .next()
-        .map(|entry| entry.into_path());
-
-    if let Some(manifest_file_path) = manifest_file_path {
-        let source = Placement::CodeBlockInFile(manifest_file_path);
-        plan = match Plan::load(&source, &id_generator)? {
+    if let Some(manifest_source) = find_by_regex(&project_root, manifest_filename_regex).map(Placement::CodeBlockInFile)
+    {
+        plan = match Plan::load(&manifest_source, &id_generator)? {
             Some(plan) => plan,
             None => return Ok(None),
         };
         plan_exists = true;
     }
 
-    if let Some(todo_file_path) = todo_file_path {
-        let source = Placement::WholeFile(todo_file_path);
-        plan = plan.merge(match Plan::load(&source, &id_generator)? {
+    if let Some(issues_source) = find_by_regex(&project_root, issues_filename_regex).map(Placement::WholeFile) {
+        plan = plan.merge(match Plan::load(&issues_source, &id_generator)? {
             Some(plan) => plan,
             None => return Ok(None),
         });

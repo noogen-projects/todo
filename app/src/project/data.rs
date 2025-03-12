@@ -2,17 +2,18 @@ use std::path::{Path, PathBuf};
 use std::{env, io};
 
 use anyhow::anyhow;
+use todo_lib::id::HashedId;
 use todo_tracker_fs::config::{DeserializedId, ProjectConfig};
 use todo_tracker_fs::Placement;
 
 use crate::config::SourceConfig;
 use crate::target::{Location, Target, TrackerType};
 
-pub enum ProjectData<ID = String> {
+pub enum ProjectData<ID: HashedId = String> {
     Fs(FsProjectData<ID>),
 }
 
-impl<ID: ToString> TryFrom<Target<ID>> for ProjectData<ID> {
+impl<ID: HashedId + ToString> TryFrom<Target<ID>> for ProjectData<ID> {
     type Error = anyhow::Error;
 
     fn try_from(target: Target<ID>) -> Result<Self, Self::Error> {
@@ -24,27 +25,53 @@ impl<ID: ToString> TryFrom<Target<ID>> for ProjectData<ID> {
 }
 
 #[derive(Debug)]
-pub struct FsProjectData<ID> {
+pub struct FsProjectData<ID: HashedId> {
     pub id: Option<ID>,
     pub name: String,
     pub root_dir: PathBuf,
-    pub config_placement: Option<Placement<PathBuf>>,
     pub is_current_dir_parent: bool,
+    pub config_placement: Option<Placement<PathBuf>>,
+    pub config: Option<ProjectConfig<ID>>,
 }
 
-impl<ID> Default for FsProjectData<ID> {
+impl<ID: HashedId> Default for FsProjectData<ID> {
     fn default() -> Self {
         Self {
             id: None,
             name: Default::default(),
             root_dir: Default::default(),
-            config_placement: None,
             is_current_dir_parent: false,
+            config_placement: None,
+            config: None,
         }
     }
 }
 
-impl<ID: ToString> FsProjectData<ID> {
+impl<ID: HashedId + Default> FsProjectData<ID> {
+    pub fn into_config(self) -> (ProjectConfig<ID>, Option<Placement<PathBuf>>) {
+        let FsProjectData {
+            id,
+            name,
+            root_dir,
+            is_current_dir_parent: _,
+            config_placement,
+            config,
+        } = self;
+        let mut config = config.unwrap_or_else(|| ProjectConfig::new(id.unwrap_or_default()));
+
+        if config.name.is_none() {
+            config.name = Some(name)
+        }
+
+        if config.root_dir.is_none() {
+            config.root_dir = Some(root_dir)
+        }
+
+        (config, config_placement)
+    }
+}
+
+impl<ID: HashedId + ToString> FsProjectData<ID> {
     pub fn from_location(location: Location<ID>) -> anyhow::Result<Self> {
         Ok(match location {
             Location::Path(path) => Self::default()
@@ -154,7 +181,7 @@ impl<ID: ToString> FsProjectData<ID> {
 }
 
 impl<ID: DeserializedId + Clone> FsProjectData<ID> {
-    pub fn update_from_config(&mut self) -> anyhow::Result<Option<ProjectConfig<ID>>> {
+    pub fn update_from_config(&mut self) -> anyhow::Result<()> {
         if let Some(source) = &self.config_placement {
             let project_config = ProjectConfig::<ID>::load(source)?;
             project_config.name.as_ref().map(|name| self.name = name.clone());
@@ -163,15 +190,14 @@ impl<ID: DeserializedId + Clone> FsProjectData<ID> {
                 .as_ref()
                 .map(|path| self.root_dir = path.clone());
             self.id = Some(project_config.id.clone());
-
-            Ok(Some(project_config))
-        } else {
-            Ok(None)
+            self.config = Some(project_config);
         }
+
+        Ok(())
     }
 }
 
-impl<ID: ToString> TryFrom<Location<ID>> for FsProjectData<ID> {
+impl<ID: HashedId + ToString> TryFrom<Location<ID>> for FsProjectData<ID> {
     type Error = anyhow::Error;
 
     fn try_from(location: Location<ID>) -> Result<Self, Self::Error> {

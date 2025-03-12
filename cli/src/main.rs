@@ -1,7 +1,7 @@
 use clap::Parser;
 use indexmap::{IndexMap, IndexSet};
-use opts::NewProject;
-use todo_app::config::{ConfigLoader, DisplayProjectConfig, Title};
+use opts::{AddIssue, NewProject};
+use todo_app::config::{ConfigLoader, DisplayProjectConfig, SourceConfig, Title};
 use todo_app::open_tracker;
 use todo_lib::plan::Step;
 use todo_tracker_fs::FsTracker;
@@ -13,21 +13,24 @@ mod opts;
 mod output;
 
 fn main() -> anyhow::Result<()> {
-    let CliOpts {
-        config_file,
-        project_path,
-        command,
-    } = CliOpts::parse();
+    let CliOpts { config_file, command } = CliOpts::parse();
 
     let profile = ConfigLoader::default()
         .maybe_with_config_file(config_file)
-        .maybe_with_project_dir(project_path)
         .load()
         .expect("Wrong config structure");
 
     match command {
-        Command::New(NewProject { manifest, path }) => {
-            command::new_project(manifest, path, &profile.config)?;
+        Command::New(NewProject {
+            with_manifest,
+            with_project_config,
+            location,
+        }) => {
+            let use_manifest = use_manifest(with_manifest, with_project_config, &profile.config.source);
+            command::new_project(use_manifest, location, &profile.config)?;
+        },
+        Command::Add(AddIssue { location, order, issue }) => {
+            command::add_issue(location, order, issue, &profile.config)?;
         },
         Command::Default(Cmd::List { project }) | Command::Issue(Cmd::List { project }) => {
             if let Some(project) = project {
@@ -81,6 +84,10 @@ fn main() -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+fn use_manifest(with_manifest: bool, with_project_config: bool, config: &SourceConfig) -> bool {
+    with_manifest || (!with_project_config && config.use_manifest_file_by_default)
 }
 
 fn display_steps(

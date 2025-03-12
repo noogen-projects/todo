@@ -97,7 +97,11 @@ fn mkdir(pathes: Vec<PathBuf>) -> anyhow::Result<CmdResponse> {
 
 fn rm(pathes: Vec<PathBuf>) -> anyhow::Result<CmdResponse> {
     for path in pathes {
-        fs::remove_dir_all(&path).with_context(|| format!("Failed to remove directory `{}`", path.display()))?;
+        if path.is_dir() {
+            fs::remove_dir_all(&path).with_context(|| format!("Failed to remove directory `{}`", path.display()))?;
+        } else {
+            fs::remove_file(&path).with_context(|| format!("Failed to remove file `{}`", path.display()))?;
+        }
     }
     Ok(CmdResponse::Success)
 }

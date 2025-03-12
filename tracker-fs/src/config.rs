@@ -16,7 +16,7 @@ pub enum LoadConfigError {
     #[error("{0}")]
     FailToRead(#[from] io::Error),
 
-    #[error("Fail to deserialize: {0}")]
+    #[error("fail to deserialize: {0}")]
     FailToDeserialize(#[from] toml::de::Error),
 }
 
@@ -25,7 +25,7 @@ pub enum SaveConfigError {
     #[error("{0}")]
     FailToWrite(#[from] io::Error),
 
-    #[error("Fail to serialize: {0}")]
+    #[error("fail to serialize: {0}")]
     FailToSerialize(#[from] toml::ser::Error),
 }
 
@@ -35,7 +35,7 @@ impl<T> SerializedId for T where T: Serialize + HashedId {}
 pub trait DeserializedId: for<'a> Deserialize<'a> + HashedId {}
 impl<T> DeserializedId for T where T: for<'a> Deserialize<'a> + HashedId {}
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct ProjectConfig<ID: HashedId = String> {
     pub id: ID,
 
@@ -45,6 +45,7 @@ pub struct ProjectConfig<ID: HashedId = String> {
 
     pub root_dir: Option<PathBuf>,
 
+    #[serde(default = "Default::default")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<String>,
 
@@ -56,8 +57,8 @@ pub struct ProjectConfig<ID: HashedId = String> {
 }
 
 impl<ID: HashedId> ProjectConfig<ID> {
-    const MD_BLOCK_PREFIX: &'static str = "```toml project";
-    const MD_BLOCK_SUFFIX: &'static str = "```";
+    const MD_BLOCK_START: &'static str = "```toml project";
+    const MD_BLOCK_END: &'static str = "```";
 
     pub fn new(id: ID) -> Self {
         Self {
@@ -99,9 +100,9 @@ impl<ID: DeserializedId> ProjectConfig<ID> {
 
                 let mut in_block = false;
                 for line in file_content.lines() {
-                    if line.trim().starts_with('`') && line.trim().to_lowercase() == Self::MD_BLOCK_PREFIX {
+                    if line.trim().starts_with('`') && line.trim().to_lowercase() == Self::MD_BLOCK_START {
                         in_block = true;
-                    } else if line.trim().starts_with('`') && line.trim().to_lowercase() == Self::MD_BLOCK_SUFFIX {
+                    } else if line.trim().starts_with('`') && line.trim().to_lowercase() == Self::MD_BLOCK_END {
                         in_block = false;
                     } else if in_block {
                         content.push_str(line);
@@ -129,9 +130,9 @@ impl<ID: SerializedId> ProjectConfig<ID> {
             Placement::CodeBlockInFile(path) => {
                 let content = format!(
                     "{prefix}\n{config}\n{suffix}\n",
-                    prefix = Self::MD_BLOCK_PREFIX,
+                    prefix = Self::MD_BLOCK_START,
                     config = self.to_toml()?.trim_end(),
-                    suffix = Self::MD_BLOCK_SUFFIX
+                    suffix = Self::MD_BLOCK_END
                 );
 
                 if path.as_ref().exists() {
@@ -141,7 +142,7 @@ impl<ID: SerializedId> ProjectConfig<ID> {
                     let mut inserted = false;
                     let mut in_block = false;
                     for line in file_content.lines() {
-                        if line.trim().starts_with('`') && line.trim().to_lowercase() == Self::MD_BLOCK_PREFIX {
+                        if line.trim().starts_with('`') && line.trim().to_lowercase() == Self::MD_BLOCK_START {
                             in_block = true;
                             new_content.push_str(&content);
                             inserted = true;
@@ -150,7 +151,7 @@ impl<ID: SerializedId> ProjectConfig<ID> {
                             new_content.push_str(line);
                             new_content.push('\n');
                         }
-                        if line.trim().starts_with('`') && line.trim().to_lowercase() == Self::MD_BLOCK_SUFFIX {
+                        if line.trim().starts_with('`') && line.trim().to_lowercase() == Self::MD_BLOCK_END {
                             in_block = false;
                         }
                     }

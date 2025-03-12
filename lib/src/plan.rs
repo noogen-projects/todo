@@ -65,6 +65,12 @@ impl<ID: HashedId + PartialEq + Clone> Plan<ID> {
         }
     }
 
+    pub fn find_issue(&self, name: impl AsRef<str>) -> Option<&Issue<ID>> {
+        self.issues
+            .iter()
+            .find_map(|(_, issue)| if issue.name == name.as_ref() { Some(issue) } else { None })
+    }
+
     pub fn merge(mut self, other: Self) -> Self {
         let Self {
             issues,

@@ -13,6 +13,7 @@ thiserror = { workspace = true }
 todo-lib = { path = "../lib" }
 toml = { version = "0.8", features = ["preserve_order"] }
 walkdir = "2.5"
+either = "1.15"
 
 [dev-dependencies]
 anyhow = { workspace = true }

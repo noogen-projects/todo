@@ -27,7 +27,7 @@ Error: destination `${current_dir_path}/test A` already exists
 ## New project with manifest
 
 ```sh
-$ todo new --manifest "test B"
+$ todo new --with-manifest "test B"
     Creating `test B` project
 ```
 
@@ -47,13 +47,13 @@ name = "test B"
 ````
 
 ```sh
-$ todo new --manifest "test A"
+$ todo new --with-manifest "test A"
     Creating `test A` project
 Error: destination `${current_dir_path}/test A` already exists
 ```
 
 ```sh
-$ todo new --manifest "test B"
+$ todo new --with-manifest "test B"
     Creating `test B` project
 Error: destination `${current_dir_path}/test B` already exists
 ```
@@ -74,7 +74,7 @@ $ todo new "test A"
 ```
 
 ```sh
-$ todo new --manifest "test B"
+$ todo new --with-manifest "test B"
     Creating `test B` project
 ```
 
@@ -105,7 +105,7 @@ Error: destination `${current_dir_path}/test A/test B` already exists
 ## New subproject with manifest
 
 ```sh
-$ todo new --manifest "test B/test B"
+$ todo new --with-manifest "test B/test B"
     Creating `test B` project under `${current_dir_path}/test B`
 ```
 
@@ -125,7 +125,7 @@ name = "test B"
 ````
 
 ```sh
-$ todo new --manifest "test B/test B"
+$ todo new --with-manifest "test B/test B"
     Creating `test B` project under `${current_dir_path}/test B`
 Error: destination `${current_dir_path}/test B/test B` already exists
 ```

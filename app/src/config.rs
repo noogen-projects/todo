@@ -8,7 +8,7 @@ use indexmap::{IndexMap, IndexSet};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use todo_tracker_fs::config::{LoadConfigError, ProjectConfig as TrackerProjectConfig};
-use todo_tracker_fs::file::{find_file_in_dir_and_parents, find_in_dir_by_name_part};
+use todo_tracker_fs::file::{find_by_name_part, find_in_dir_and_parents};
 use todo_tracker_fs::Placement;
 
 use crate::issue::Order;
@@ -174,6 +174,9 @@ pub struct SourceConfig {
     #[serde(default = "SourceConfig::default_issues_filename_regex", with = "serde_regex")]
     pub issues_filename_regex: Regex,
 
+    #[serde(default = "SourceConfig::default_issues_filename_example")]
+    pub issues_filename_example: String,
+
     #[serde(default = "SourceConfig::default_project_config_file")]
     pub project_config_file: PathBuf,
 
@@ -187,6 +190,7 @@ impl Default for SourceConfig {
             manifest_filename_regex: Self::default_manifest_filename_regex(),
             manifest_filename_example: Self::default_manifest_filename_example(),
             issues_filename_regex: Self::default_issues_filename_regex(),
+            issues_filename_example: Self::default_issues_filename_example(),
             project_config_file: Self::default_project_config_file(),
             projects_root_dir: None,
         }
@@ -208,6 +212,10 @@ impl SourceConfig {
 
     pub fn default_issues_filename_regex() -> Regex {
         Regex::new("^TODO\\.md$").expect("regex mus be correct")
+    }
+
+    pub fn default_issues_filename_example() -> String {
+        "TODO.md".into()
     }
 
     pub fn default_project_config_file() -> PathBuf {
@@ -232,24 +240,67 @@ impl SourceConfig {
         }
     }
 
+    pub fn make_manifest_file_path(&self, root_dir: impl AsRef<Path>, project_name: Option<&str>) -> PathBuf {
+        let root_dir = root_dir.as_ref();
+        if let Some(name) = project_name {
+            root_dir.join(self.project_manifest_file_name(name))
+        } else {
+            let manifest_file_name_part = self.project_manifest_file_name("");
+            find_by_name_part(root_dir, &manifest_file_name_part)
+                .unwrap_or_else(|| root_dir.join(manifest_file_name_part))
+        }
+    }
+
+    pub fn issues_example_project_name(&self) -> &str {
+        self.issues_filename_regex
+            .captures(&self.issues_filename_example)
+            .and_then(|captures| captures.get(1))
+            .map(|name| name.as_str())
+            .unwrap_or_default()
+    }
+
+    pub fn project_issues_file_name(&self, project_name: impl AsRef<str>) -> String {
+        let example_project_name = self.issues_example_project_name();
+        if example_project_name.is_empty() {
+            self.issues_filename_example.clone()
+        } else {
+            self.issues_filename_example
+                .replace(example_project_name, project_name.as_ref())
+        }
+    }
+
+    pub fn make_issues_file_path(&self, root_dir: impl AsRef<Path>, project_name: Option<&str>) -> PathBuf {
+        root_dir
+            .as_ref()
+            .join(self.project_issues_file_name(project_name.unwrap_or_default()))
+    }
+
     pub fn find_config_placement(
         &self,
         root_dir: impl AsRef<Path>,
         project_name: Option<&str>,
     ) -> Option<Placement<PathBuf>> {
-        let root_dir = root_dir.as_ref();
-        let project_config_file = root_dir.join(&self.project_config_file);
-
+        let project_config_file = root_dir.as_ref().join(&self.project_config_file);
         if project_config_file.exists() {
             Some(Placement::WholeFile(project_config_file))
         } else {
-            let manifest_file = if let Some(name) = project_name {
-                root_dir.join(self.project_manifest_file_name(name))
-            } else {
-                let manifest_file_name_part = self.project_manifest_file_name("");
-                find_in_dir_by_name_part(root_dir, &manifest_file_name_part)?
-            };
+            let manifest_file = self.make_manifest_file_path(root_dir, project_name);
+            manifest_file
+                .exists()
+                .then(|| Placement::CodeBlockInFile(manifest_file))
+        }
+    }
 
+    pub fn find_issues_placement(
+        &self,
+        root_dir: impl AsRef<Path>,
+        project_name: Option<&str>,
+    ) -> Option<Placement<PathBuf>> {
+        let issues_file = self.make_issues_file_path(root_dir.as_ref(), project_name);
+        if issues_file.exists() {
+            Some(Placement::WholeFile(issues_file))
+        } else {
+            let manifest_file = self.make_manifest_file_path(root_dir, project_name);
             manifest_file
                 .exists()
                 .then(|| Placement::CodeBlockInFile(manifest_file))
@@ -386,7 +437,7 @@ impl ConfigLoader {
 
         let config_dir = env::current_dir()?;
         let config_file = config_file
-            .or_else(|| find_file_in_dir_and_parents(&config_dir, &config_file_name))
+            .or_else(|| find_in_dir_and_parents(&config_dir, &config_file_name))
             .unwrap_or_else(|| config_dir.join(&config_file_name));
 
         if config_file.exists() {
