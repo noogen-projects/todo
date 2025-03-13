@@ -32,7 +32,7 @@ pub fn find_by_name_part(dir: impl AsRef<Path>, file_name_part: impl AsRef<str>)
     None
 }
 
-pub fn find_match_files<'a>(dir: impl AsRef<Path>, regex: &'a Regex) -> impl Iterator<Item = DirEntry> + 'a {
+pub fn find_match_files(dir: impl AsRef<Path>, regex: &Regex) -> impl Iterator<Item = DirEntry> + '_ {
     WalkDir::new(dir)
         .max_depth(1)
         .into_iter()

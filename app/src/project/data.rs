@@ -184,11 +184,13 @@ impl<ID: DeserializedId + Clone> FsProjectData<ID> {
     pub fn update_from_config(&mut self) -> anyhow::Result<()> {
         if let Some(source) = &self.config_placement {
             let project_config = ProjectConfig::<ID>::load(source)?;
-            project_config.name.as_ref().map(|name| self.name = name.clone());
-            project_config
-                .root_dir
-                .as_ref()
-                .map(|path| self.root_dir = path.clone());
+
+            if let Some(name) = &project_config.name {
+                self.name = name.clone()
+            }
+            if let Some(path) = &project_config.root_dir {
+                self.root_dir = path.clone()
+            }
             self.id = Some(project_config.id.clone());
             self.config = Some(project_config);
         }

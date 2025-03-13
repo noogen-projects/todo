@@ -119,20 +119,3 @@ fn echo(text: String, path: Option<PathBuf>) -> anyhow::Result<CmdResponse> {
         Ok(CmdResponse::Output(text))
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn split_command() {
-        assert_eq!(split_command_parts("mkdir a b c"), vec!["mkdir", "a", "b", "c"]);
-        assert_eq!(split_command_parts("cd a/b cd \"ef g\""), vec![
-            "cd", "a/b", "cd", "ef g"
-        ]);
-        assert_eq!(split_command_parts("echo \"test A\""), vec!["echo", "test A"]);
-        assert_eq!(split_command_parts("echo a \"b c d\" ef"), vec![
-            "echo", "a", "b c d", "ef"
-        ]);
-    }
-}

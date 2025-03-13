@@ -1,13 +1,13 @@
 use std::fs;
-use std::io::{self, BufRead, Write};
+use std::io::{self, Read, Seek, Write};
 use std::path::Path;
 
 use todo_lib::issue::Issue;
 
 use crate::Placement;
 
-pub const MD_BLOCK_START: &'static str = "```md todo";
-pub const MD_BLOCK_END: &'static str = "```";
+pub const MD_BLOCK_START: &str = "```md todo";
+pub const MD_BLOCK_END: &str = "```";
 
 pub trait SaveIssue {
     type Id;
@@ -49,7 +49,7 @@ impl<ID> SaveIssue for Issue<ID> {
 
                 if let Some(start_range) = get_newline_mark_range(&manifest_content, MD_BLOCK_START, 0) {
                     let idx = manifest_content[start_range.1..]
-                        .find(|ch| ch == '\n')
+                        .find('\n')
                         .map(|idx| idx + start_range.1)
                         .unwrap_or(manifest_content.len());
                     manifest_content.insert(idx, '\n');
@@ -81,11 +81,20 @@ impl<ID> SaveIssue for Issue<ID> {
         match destination {
             Placement::WholeFile(path) => {
                 let mut file = fs::File::options().append(true).read(true).open(path)?;
-                if let Some(line) = io::BufReader::new(&file).lines().last() {
-                    if !line?.ends_with("\n") {
+
+                let file_size = std::fs::metadata(path)?.len();
+                if file_size > 0 {
+                    let mut reader = io::BufReader::new(&file);
+                    reader.seek(io::SeekFrom::End(-1))?;
+
+                    let mut last_ch = [0];
+                    reader.read_exact(&mut last_ch)?;
+
+                    if &last_ch != b"\n" {
                         file.write_all(b"\n")?;
                     }
                 }
+
                 file.write_all(text.as_bytes())?;
                 file.write_all(b"\n")?;
             },

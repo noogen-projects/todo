@@ -287,7 +287,7 @@ impl SourceConfig {
             let manifest_file = self.make_manifest_file_path(root_dir, project_name);
             manifest_file
                 .exists()
-                .then(|| Placement::CodeBlockInFile(manifest_file))
+                .then_some(Placement::CodeBlockInFile(manifest_file))
         }
     }
 
@@ -303,7 +303,7 @@ impl SourceConfig {
             let manifest_file = self.make_manifest_file_path(root_dir, project_name);
             manifest_file
                 .exists()
-                .then(|| Placement::CodeBlockInFile(manifest_file))
+                .then_some(Placement::CodeBlockInFile(manifest_file))
         }
     }
 }

@@ -66,7 +66,7 @@ pub struct AddIssue {
     #[command(flatten)]
     pub order: Order,
 
-    /// The text of the issue
+    /// The name of the issue
     pub issue: String,
 }
 

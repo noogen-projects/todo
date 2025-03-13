@@ -1,4 +1,4 @@
-# Add issue
+# Add issue to project
 
 ## Prepare projects
 
@@ -8,18 +8,8 @@ $ todo new "test A"
 ```
 
 ```sh
-$ todo new "test A/test B"
-    Creating `test B` project under `${current_dir_path}/test A`
-```
-
-```sh
-$ todo new --with-manifest "test A/test C"
-    Creating `test C` project under `${current_dir_path}/test A`
-```
-
-```sh
-$ todo new --with-manifest "test D"
-    Creating `test D` project
+$ todo new --with-manifest "test B"
+    Creating `test B` project
 ```
 
 ## Add issue inside project dir
@@ -37,7 +27,7 @@ $ todo add "task 1"
 
 ```sh
 $ ls "test A"
-Project.toml TODO.md test C test B
+Project.toml TODO.md
 ```
 
 ```sh
@@ -73,13 +63,26 @@ Error: issue `task 2` in `${current_dir_path}` already exists
 
 ```sh
 $ ls "test A"
-Project.toml TODO.md test C test B
+Project.toml TODO.md
 ```
 
 ```sh
 $ cat "test A/TODO.md"
 - task 2
 - task 1
+```
+
+```sh
+$ cd "test A"
+$ todo add --last "task 3"
+    Adding `task 3` issue to `test A` project
+```
+
+```sh
+$ cat "test A/TODO.md"
+- task 2
+- task 1
+- task 3
 ```
 
 ## Add issue to specifyed project
@@ -93,7 +96,7 @@ Error: issue `task 1` in `${current_dir_path}/test A` already exists
 ```sh
 $ rm "test A/TODO.md"
 $ ls "test A"
-Project.toml test C test B
+Project.toml
 ```
 
 ```sh
@@ -103,7 +106,7 @@ $ todo add "task 1" --project "test A"
 
 ```sh
 $ ls "test A"
-Project.toml TODO.md test C test B
+Project.toml TODO.md
 ```
 
 ```sh
@@ -123,22 +126,34 @@ $ cat "test A/TODO.md"
 ```
 
 ```sh
-$ todo add "task 1" --project "test D"
-    Adding `task 1` issue to `test D` project
+$ todo add --last "task 3" --project "test A"
+    Adding `task 3` issue to `test A` project
 ```
 
 ```sh
-$ ls "test D"
-test D.manifest.md
+$ cat "test A/TODO.md"
+- task 2
+- task 1
+- task 3
+```
+
+```sh
+$ todo add "task 1" --project "test B"
+    Adding `task 1` issue to `test B` project
+```
+
+```sh
+$ ls "test B"
+test B.manifest.md
 ```
 
 ````sh
-$ cat "test D/test D.manifest.md"
-# test D
+$ cat "test B/test B.manifest.md"
+# test B
 
 ```toml project
-id = "test D"
-name = "test D"
+id = "test B"
+name = "test B"
 ```
 ```md todo
 - task 1
@@ -146,18 +161,18 @@ name = "test D"
 ````
 
 ```sh
-$ todo add "task 1" --project "test D"
-    Adding `task 1` issue to `test D` project
-Error: issue `task 1` in `${current_dir_path}/test D` already exists
+$ todo add "task 1" --project "test B"
+    Adding `task 1` issue to `test B` project
+Error: issue `task 1` in `${current_dir_path}/test B` already exists
 ```
 
 ````sh
-$ cat "test D/test D.manifest.md"
-# test D
+$ cat "test B/test B.manifest.md"
+# test B
 
 ```toml project
-id = "test D"
-name = "test D"
+id = "test B"
+name = "test B"
 ```
 ```md todo
 - task 1
@@ -165,22 +180,22 @@ name = "test D"
 ````
 
 ```sh
-$ todo add "task 2" --project "test D"
-    Adding `task 2` issue to `test D` project
+$ todo add "task 2" --project "test B"
+    Adding `task 2` issue to `test B` project
 ```
 
 ```sh
-$ ls "test D"
-test D.manifest.md
+$ ls "test B"
+test B.manifest.md
 ```
 
 ````sh
-$ cat "test D/test D.manifest.md"
-# test D
+$ cat "test B/test B.manifest.md"
+# test B
 
 ```toml project
-id = "test D"
-name = "test D"
+id = "test B"
+name = "test B"
 ```
 ```md todo
 - task 2
@@ -188,5 +203,42 @@ name = "test D"
 ```
 ````
 
-## Add issue to subproject
+```sh
+$ todo add --last --project "test B" "task 3"
+    Adding `task 3` issue to `test B` project
+```
+
+````sh
+$ cat "test B/test B.manifest.md"
+# test B
+
+```toml project
+id = "test B"
+name = "test B"
+```
+```md todo
+- task 2
+- task 1
+- task 3
+```
+````
+
+# Add issue to subproject
+
+## Prepare subprojects
+
+```sh
+$ todo new "test A"
+    Creating `test A` project
+```
+
+```sh
+$ todo new "test A/test C"
+    Creating `test C` project under `${current_dir_path}/test A`
+```
+
+```sh
+$ todo new --with-manifest "test A/test D"
+    Creating `test D` project under `${current_dir_path}/test A`
+```
 
