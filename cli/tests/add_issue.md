@@ -242,3 +242,182 @@ $ todo new --with-manifest "test A/test D"
     Creating `test D` project under `${current_dir_path}/test A`
 ```
 
+## Add issue from parent project dir
+
+```sh
+$ cd "test A"
+$ todo add --project "test C" "task 1"
+    Adding `task 1` issue to `test C` project
+```
+
+```sh
+$ ls "test A"
+Project.toml test C test D
+```
+
+```sh
+$ ls "test A/test C"
+Project.toml TODO.md
+```
+
+```sh
+$ cat "test A/test C/TODO.md"
+- task 1
+```
+
+```sh
+$ cd "test A"
+$ todo add "task 2" --project "test C"
+    Adding `task 2` issue to `test C` project
+```
+
+```sh
+$ cat "test A/test C/TODO.md"
+- task 2
+- task 1
+```
+
+```sh
+$ cd "test A"
+$ todo add "task 1" --project "test C"
+    Adding `task 1` issue to `test C` project
+Error: issue `task 1` in `${current_dir_path}/test C` already exists
+```
+
+```sh
+$ cd "test A"
+$ todo add --project "test C" "task 2"
+    Adding `task 2` issue to `test C` project
+Error: issue `task 2` in `${current_dir_path}/test C` already exists
+```
+
+```sh
+$ ls "test A"
+Project.toml test C test D
+```
+
+```sh
+$ ls "test A/test C"
+Project.toml TODO.md
+```
+
+```sh
+$ cat "test A/test C/TODO.md"
+- task 2
+- task 1
+```
+
+```sh
+$ cd "test A"
+$ todo add --last --project "test C" "task 3"
+    Adding `task 3` issue to `test C` project
+```
+
+```sh
+$ cat "test A/test C/TODO.md"
+- task 2
+- task 1
+- task 3
+```
+
+## Add issue inside subproject dir
+
+```sh
+$ cd "test A/test D"
+$ todo add "task 1"
+    Adding `task 1` issue to `test D` project
+```
+
+```sh
+$ ls "test A"
+Project.toml test C test D
+```
+
+```sh
+$ ls "test A/test D"
+test D.manifest.md
+```
+
+````sh
+$ cat "test A/test D/test D.manifest.md"
+# test D
+
+```toml project
+id = "test D"
+name = "test D"
+```
+```md todo
+- task 1
+```
+````
+
+```sh
+$ cd "test A/test D"
+$ todo add "task 1"
+    Adding `task 1` issue to `test D` project
+Error: issue `task 1` in `${current_dir_path}` already exists
+```
+
+````sh
+$ cat "test A/test D/test D.manifest.md"
+# test D
+
+```toml project
+id = "test D"
+name = "test D"
+```
+```md todo
+- task 1
+```
+````
+
+```sh
+$ cd "test A/test D"
+$ todo add "task 2"
+    Adding `task 2` issue to `test D` project
+```
+
+```sh
+$ ls "test A"
+Project.toml test C test D
+```
+
+```sh
+$ ls "test A/test D"
+test D.manifest.md
+```
+
+````sh
+$ cat "test A/test D/test D.manifest.md"
+# test D
+
+```toml project
+id = "test D"
+name = "test D"
+```
+```md todo
+- task 2
+- task 1
+```
+````
+
+```sh
+$ cd "test A/test D"
+$ todo add --last "task 3"
+    Adding `task 3` issue to `test D` project
+```
+
+````sh
+$ cat "test A/test D/test D.manifest.md"
+# test D
+
+```toml project
+id = "test D"
+name = "test D"
+```
+```md todo
+- task 2
+- task 1
+- task 3
+```
+````
