@@ -21,6 +21,8 @@ pub enum Command {
 
     New(NewProject),
 
+    Init(InitProject),
+
     Add(AddIssue),
 
     #[command(subcommand)]
@@ -54,6 +56,20 @@ pub struct NewProject {
 
     /// New project location (new project path by example)
     pub location: String,
+}
+
+#[derive(Parser, Clone)]
+pub struct InitProject {
+    /// Initialize project with manifest file
+    #[arg(short = 'm', long, conflicts_with = "with_project_config")]
+    pub with_manifest: bool,
+
+    /// Initialize project with project config file
+    #[arg(long, conflicts_with = "with_manifest")]
+    pub with_project_config: bool,
+
+    /// Initialize project location (exists directory path by example, current directory by default)
+    pub location: Option<String>,
 }
 
 #[derive(Parser)]

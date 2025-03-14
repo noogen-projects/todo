@@ -1,6 +1,6 @@
 use clap::Parser;
 use indexmap::{IndexMap, IndexSet};
-use opts::{AddIssue, NewProject};
+use opts::{AddIssue, InitProject, NewProject};
 use todo_app::config::{ConfigLoader, DisplayProjectConfig, SourceConfig, Title};
 use todo_app::open_tracker;
 use todo_lib::plan::Step;
@@ -28,6 +28,14 @@ fn main() -> anyhow::Result<()> {
         }) => {
             let use_manifest = use_manifest(with_manifest, with_project_config, &profile.config.source);
             command::new_project(use_manifest, location, &profile.config)?;
+        },
+        Command::Init(InitProject {
+            with_manifest,
+            with_project_config,
+            location,
+        }) => {
+            let use_manifest = use_manifest(with_manifest, with_project_config, &profile.config.source);
+            command::init_project(use_manifest, location, &profile.config)?;
         },
         Command::Add(AddIssue { location, order, issue }) => {
             command::add_issue(location, order, issue, &profile.config)?;

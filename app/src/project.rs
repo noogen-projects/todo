@@ -40,6 +40,61 @@ pub fn create<ID: SerializedId>(ProjectData::Fs(project_data): ProjectData<ID>) 
     Ok(())
 }
 
+pub fn init<ID: SerializedId>(
+    ProjectData::Fs(project_data): ProjectData<ID>,
+    source_config: &SourceConfig,
+) -> anyhow::Result<()> {
+    let FsProjectData {
+        id,
+        name,
+        root_dir,
+        is_current_dir_parent: _,
+        config_placement,
+        config,
+    } = project_data;
+    if !root_dir.exists() {
+        return Err(anyhow!("destination `{}` does not exists", root_dir.display()));
+    }
+
+    if let Some(destination) = config_placement {
+        if destination.as_ref().exists() {
+            return Err(anyhow!(
+                "destination `{}` already exists",
+                destination.as_ref().display()
+            ));
+        }
+
+        let project_manifest_file_name = source_config.project_manifest_file_name(&name);
+        let project_manifest_file = root_dir.join(project_manifest_file_name);
+        if project_manifest_file.exists() {
+            return Err(anyhow!(
+                "destination `{}` already exists",
+                project_manifest_file.display()
+            ));
+        }
+
+        let project_config_file = root_dir.join(&source_config.project_config_file);
+        if project_config_file.exists() {
+            return Err(anyhow!(
+                "destination `{}` already exists",
+                project_config_file.display()
+            ));
+        }
+
+        if let Some(project_config) = config {
+            project_config.save(destination)?;
+        } else if let Some(id) = id {
+            let project_config = ProjectConfig::new(id).with_name(name);
+            project_config.save(destination)?;
+        } else {
+            let project_config = ProjectConfig::new(name.clone()).with_name(name);
+            project_config.save(destination)?;
+        }
+    }
+
+    Ok(())
+}
+
 pub fn default_location<ID>(config: &SourceConfig) -> anyhow::Result<Location<ID>> {
     let mut current_dir = env::current_dir()?;
     let current_dir_string: String = current_dir.to_string_lossy().into();
