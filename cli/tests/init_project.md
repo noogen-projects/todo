@@ -258,3 +258,111 @@ $ todo init "test B/test B"
     Initializing `test B` project under `${current_dir_path}/test B`
 Error: destination `${current_dir_path}/test B/test B/test B.manifest.md` already exists
 ```
+
+# Init subproject inside project dir
+
+## Prepare parent projects
+
+```sh
+$ todo new "test A"
+    Creating `test A` project
+```
+
+```sh
+$ todo new --with-manifest "test B"
+    Creating `test B` project
+```
+
+```sh
+$ mkdir "test A/test B"
+$ mkdir "test B/test B"
+```
+
+## Init subproject default
+
+```sh
+$ cd "test A/test B"
+$ todo init
+    Initializing `test B` project
+```
+
+```sh
+$ ls "test A"
+Project.toml test B
+```
+
+```sh
+$ ls "test A/test B"
+Project.toml
+```
+
+```sh
+$ cat "test A/Project.toml"
+id = "test A"
+name = "test A"
+```
+
+```sh
+$ cat "test A/test B/Project.toml"
+id = "test B"
+name = "test B"
+```
+
+```sh
+$ cd "test A/test B"
+$ todo init
+    Initializing `test B` project
+Error: destination `${current_dir_path}/Project.toml` already exists
+```
+
+## Init subproject with manifest
+
+```sh
+$ cd "test B/test B"
+$ todo init --with-manifest
+    Initializing `test B` project
+```
+
+```sh
+$ ls "test B"
+test B.manifest.md test B
+```
+
+```sh
+$ ls "test B/test B"
+test B.manifest.md
+```
+
+````sh
+$ cat "test B/test B.manifest.md"
+# test B
+
+```toml project
+id = "test B"
+name = "test B"
+```
+````
+
+````sh
+$ cat "test B/test B/test B.manifest.md"
+# test B
+
+```toml project
+id = "test B"
+name = "test B"
+```
+````
+
+```sh
+$ cd "test B/test B"
+$ todo init --with-manifest
+    Initializing `test B` project
+Error: destination `${current_dir_path}/test B.manifest.md` already exists
+```
+
+```sh
+$ cd "test B/test B"
+$ todo init
+    Initializing `test B` project
+Error: destination `${current_dir_path}/test B.manifest.md` already exists
+```
