@@ -3,65 +3,65 @@
 ## New project default
 
 ```sh
-$ todo new "test A"
-    Creating `test A` project
+$ todo new "project A"
+    Creating `project A` project
 ```
 
 ```sh
-$ ls "./test A"
+$ ls "./project A"
 Project.toml
 ```
 
 ```sh
-$ cat "./test A/Project.toml"
-id = "test A"
-name = "test A"
+$ cat "./project A/Project.toml"
+id = "project A"
+name = "project A"
 ```
 
 ```sh
-$ todo new "test A"
-    Creating `test A` project
-Error: destination `${current_dir_path}/test A` already exists
+$ todo new "project A"
+    Creating `project A` project
+Error: destination `${current_dir_path}/project A` already exists
 ```
 
 ## New project with manifest
 
 ```sh
-$ todo new --with-manifest "test B"
-    Creating `test B` project
+$ todo new --with-manifest "project B"
+    Creating `project B` project
 ```
 
 ```sh
-$ ls "./test B"
-test B.manifest.md
+$ ls "./project B"
+project B.manifest.md
 ```
 
 ````sh
-$ cat "./test B/test B.manifest.md"
-# test B
+$ cat "./project B/project B.manifest.md"
+# project B
 
 ```toml project
-id = "test B"
-name = "test B"
+id = "project B"
+name = "project B"
 ```
 ````
 
 ```sh
-$ todo new --with-manifest "test A"
-    Creating `test A` project
-Error: destination `${current_dir_path}/test A` already exists
+$ todo new --with-manifest "project A"
+    Creating `project A` project
+Error: destination `${current_dir_path}/project A` already exists
 ```
 
 ```sh
-$ todo new --with-manifest "test B"
-    Creating `test B` project
-Error: destination `${current_dir_path}/test B` already exists
+$ todo new --with-manifest "project B"
+    Creating `project B` project
+Error: destination `${current_dir_path}/project B` already exists
 ```
 
 ```sh
-$ todo new "test B"
-    Creating `test B` project
-Error: destination `${current_dir_path}/test B` already exists
+$ todo new "project B"
+    Creating `project B` project
+Error: destination `${current_dir_path}/project B` already exists
 ```
 
 # New subproject
@@ -69,69 +69,69 @@ Error: destination `${current_dir_path}/test B` already exists
 ## Prepare parent projects
 
 ```sh
-$ todo new "test A"
-    Creating `test A` project
+$ todo new "project A"
+    Creating `project A` project
 ```
 
 ```sh
-$ todo new --with-manifest "test B"
-    Creating `test B` project
+$ todo new --with-manifest "project B"
+    Creating `project B` project
 ```
 
 ## New subproject default
 
 ```sh
-$ todo new "test A/test B"
-    Creating `test B` project under `${current_dir_path}/test A`
+$ todo new "project A/project B"
+    Creating `project B` project under `${current_dir_path}/project A`
 ```
 
 ```sh
-$ ls "./test A/test B"
+$ ls "./project A/project B"
 Project.toml
 ```
 
 ```sh
-$ cat "./test A/test B/Project.toml"
-id = "test B"
-name = "test B"
+$ cat "./project A/project B/Project.toml"
+id = "project B"
+name = "project B"
 ```
 
 ```sh
-$ todo new "test A/test B"
-    Creating `test B` project under `${current_dir_path}/test A`
-Error: destination `${current_dir_path}/test A/test B` already exists
+$ todo new "project A/project B"
+    Creating `project B` project under `${current_dir_path}/project A`
+Error: destination `${current_dir_path}/project A/project B` already exists
 ```
 
 ## New subproject with manifest
 
 ```sh
-$ todo new --with-manifest "test B/test B"
-    Creating `test B` project under `${current_dir_path}/test B`
+$ todo new --with-manifest "project B/project B"
+    Creating `project B` project under `${current_dir_path}/project B`
 ```
 
 ```sh
-$ ls "./test B/test B"
-test B.manifest.md
+$ ls "./project B/project B"
+project B.manifest.md
 ```
 
 ````sh
-$ cat "./test B/test B/test B.manifest.md"
-# test B
+$ cat "./project B/project B/project B.manifest.md"
+# project B
 
 ```toml project
-id = "test B"
-name = "test B"
+id = "project B"
+name = "project B"
 ```
 ````
 
 ```sh
-$ todo new --with-manifest "test B/test B"
-    Creating `test B` project under `${current_dir_path}/test B`
-Error: destination `${current_dir_path}/test B/test B` already exists
+$ todo new --with-manifest "project B/project B"
+    Creating `project B` project under `${current_dir_path}/project B`
+Error: destination `${current_dir_path}/project B/project B` already exists
 ```
 
 ```sh
-$ todo new "test B/test B"
-    Creating `test B` project under `${current_dir_path}/test B`
-Error: destination `${current_dir_path}/test B/test B` already exists
+$ todo new "project B/project B"
+    Creating `project B` project under `${current_dir_path}/project B`
+Error: destination `${current_dir_path}/project B/project B` already exists
 ```

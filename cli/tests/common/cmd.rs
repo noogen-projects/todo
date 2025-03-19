@@ -72,18 +72,17 @@ fn cd(path: PathBuf) -> anyhow::Result<CmdResponse> {
 }
 
 fn ls(path: PathBuf) -> anyhow::Result<CmdResponse> {
-    let mut output = String::new();
+    let mut entries = Vec::new();
+
     for entry in fs::read_dir(&path)? {
-        output.push_str(&format!("{} ", entry?.path().strip_prefix(&path)?.display()));
+        let entry = entry?.path().strip_prefix(&path)?.display().to_string();
+        entries.push(entry);
     }
 
-    if let Some(last) = output.pop() {
-        if last == ' ' {
-            output.push('\n');
-        } else {
-            output.push(last);
-        }
-    }
+    entries.sort();
+
+    let mut output = entries.join(" ");
+    output.push('\n');
 
     Ok(CmdResponse::Output(output))
 }

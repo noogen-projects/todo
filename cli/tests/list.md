@@ -3,23 +3,23 @@
 ## Prepare projects
 
 ```sh
-$ todo new "test A"
-    Creating `test A` project
+$ todo new "project A"
+    Creating `project A` project
 ```
 
 ```sh
-$ todo new "test B"
-    Creating `test B` project
+$ todo new "project B"
+    Creating `project B` project
 ```
 
 ```sh
-$ todo new --with-manifest "test A/test C"
-    Creating `test C` project under `${current_dir_path}/test A`
+$ todo new --with-manifest "project A/project C"
+    Creating `project C` project under `${current_dir_path}/project A`
 ```
 
 ```sh
-$ todo new "test A/test D"
-    Creating `test D` project under `${current_dir_path}/test A`
+$ todo new "project A/project D"
+    Creating `project D` project under `${current_dir_path}/project A`
 ```
 
 ## List empty projects
@@ -33,271 +33,271 @@ Error: could not find `Project.toml` or `*.manifest.md` in `${current_dir_path}`
 $ todo list .
 List steps of 4 projects
 
-[test A]: 0
+[project A]: 0
 
-[test A/test C]: 0
+[project A/project C]: 0
 
-[test A/test D]: 0
+[project A/project D]: 0
 
-[test B]: 0
+[project B]: 0
 ```
 
 ```sh
-$ todo list "test A"
+$ todo list "project A"
 List steps of 1 project
 
-[test A]: 0
+[project A]: 0
 ```
 
 ```sh
-$ cd "test A"
+$ cd "project A"
 $ todo list
 List steps of 3 projects
 
-[test A]: 0
+[project A]: 0
 
-[test A/test C]: 0
+[project A/project C]: 0
 
-[test A/test D]: 0
+[project A/project D]: 0
 ```
 
 ```sh
-$ cd "test A/test C"
+$ cd "project A/project C"
 $ todo list
 List steps of 1 project
 
-[test C]: 0
+[project C]: 0
 ```
 
 ## List one step
 
 ```sh
-$ cd "test A"
+$ cd "project A"
 $ todo add "task 1"
-    Adding `task 1` issue to `test A` project
+    Adding `task 1` issue to `project A` project
 ```
 
 ```sh
 $ todo list .
 List steps of 4 projects
 
-[test A]: 1
+[project A]: 1
 - task 1
 
-[test A/test C]: 0
+[project A/project C]: 0
 
-[test A/test D]: 0
+[project A/project D]: 0
 
-[test B]: 0
+[project B]: 0
 ```
 
 ```sh
-$ todo list "test A"
+$ todo list "project A"
 List steps of 1 project
 
-[test A]: 1
+[project A]: 1
 - task 1
 ```
 
 ```sh
-$ cd "test A"
+$ cd "project A"
 $ todo list
 List steps of 3 projects
 
-[test A]: 1
+[project A]: 1
 - task 1
 
-[test A/test C]: 0
+[project A/project C]: 0
 
-[test A/test D]: 0
+[project A/project D]: 0
 ```
 
 ## List multiple steps
 
 ```sh
-$ cd "test A"
+$ cd "project A"
 $ todo add "task 2"
-    Adding `task 2` issue to `test A` project
+    Adding `task 2` issue to `project A` project
 ```
 
 ```sh
-$ cd "test A/test C"
+$ cd "project A/project C"
 $ todo add "task 1"
-    Adding `task 1` issue to `test C` project
+    Adding `task 1` issue to `project C` project
 ```
 
 ```sh
 $ todo list .
 List steps of 4 projects
 
-[test A]: 2
+[project A]: 2
 - task 2
 - task 1
 
-[test A/test C]: 1
+[project A/project C]: 1
 - task 1
 
-[test A/test D]: 0
+[project A/project D]: 0
 
-[test B]: 0
+[project B]: 0
 ```
 
 ```sh
-$ todo list "test A"
+$ todo list "project A"
 List steps of 1 project
 
-[test A]: 2
+[project A]: 2
 - task 2
 - task 1
 ```
 
 ```sh
-$ cd "test A"
+$ cd "project A"
 $ todo list
 List steps of 3 projects
 
-[test A]: 2
+[project A]: 2
 - task 2
 - task 1
 
-[test A/test C]: 1
+[project A/project C]: 1
 - task 1
 
-[test A/test D]: 0
+[project A/project D]: 0
 ```
 
 ```sh
-$ cd "test A/test C"
+$ cd "project A/project C"
 $ todo list
 List steps of 1 project
 
-[test C]: 1
+[project C]: 1
 - task 1
 ```
 
 ```sh
-$ cd "test A"
+$ cd "project A"
 $ todo add "task 3"
-    Adding `task 3` issue to `test A` project
+    Adding `task 3` issue to `project A` project
 ```
 
 ```sh
-$ cd "test A/test C"
+$ cd "project A/project C"
 $ todo add "task 2"
-    Adding `task 2` issue to `test C` project
+    Adding `task 2` issue to `project C` project
 ```
 
 ```sh
-$ cd "test A/test D"
+$ cd "project A/project D"
 $ todo add "task D-1"
-    Adding `task D-1` issue to `test D` project
+    Adding `task D-1` issue to `project D` project
 ```
 
 ```sh
 $ todo list .
 List steps of 4 projects
 
-[test A]: 3
+[project A]: 3
 - task 3
 - task 2
 - task 1
 
-[test A/test C]: 2
+[project A/project C]: 2
 - task 2
 - task 1
 
-[test A/test D]: 1
+[project A/project D]: 1
 - task D-1
 
-[test B]: 0
+[project B]: 0
 ```
 
 ```sh
-$ todo list "test A"
+$ todo list "project A"
 List steps of 1 project
 
-[test A]: 3
+[project A]: 3
 - task 3
 - task 2
 - task 1
 ```
 
 ```sh
-$ cd "test A"
+$ cd "project A"
 $ todo list
 List steps of 3 projects
 
-[test A]: 3
+[project A]: 3
 - task 3
 - task 2
 - task 1
 
-[test A/test C]: 2
+[project A/project C]: 2
 - task 2
 - task 1
 
-[test A/test D]: 1
+[project A/project D]: 1
 - task D-1
 ```
 
 ```sh
-$ cd "test A/test C"
+$ cd "project A/project C"
 $ todo list
 List steps of 1 project
 
-[test C]: 2
+[project C]: 2
 - task 2
 - task 1
 ```
 
 ```sh
-$ cd "test A/test D"
+$ cd "project A/project D"
 $ todo list
 List steps of 1 project
 
-[test D]: 1
+[project D]: 1
 - task D-1
 ```
 
 ```sh
-$ cd "test B"
+$ cd "project B"
 $ todo add "task B-1"
-    Adding `task B-1` issue to `test B` project
+    Adding `task B-1` issue to `project B` project
 ```
 
 ```sh
-$ cd "test B"
+$ cd "project B"
 $ todo add --last "task B-2"
-    Adding `task B-2` issue to `test B` project
+    Adding `task B-2` issue to `project B` project
 ```
 
 ```sh
 $ todo list .
 List steps of 4 projects
 
-[test A]: 3
+[project A]: 3
 - task 3
 - task 2
 - task 1
 
-[test A/test C]: 2
+[project A/project C]: 2
 - task 2
 - task 1
 
-[test A/test D]: 1
+[project A/project D]: 1
 - task D-1
 
-[test B]: 2
+[project B]: 2
 - task B-1
 - task B-2
 ```
 
 ```sh
-$ cd "test B"
+$ cd "project B"
 $ todo list
 List steps of 1 project
 
-[test B]: 2
+[project B]: 2
 - task B-1
 - task B-2
 ```

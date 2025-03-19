@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::fmt::{Display, Write};
 
 use todo_app::config::{DisplayProjectConfig, Title};
 use todo_lib::id::HashedId;
@@ -21,23 +21,36 @@ macro_rules! outln {
 }
 
 pub trait DisplayList<ID> {
-    fn display_project_title(&self, project: &Project<ID>, title: Title);
+    fn format_project_title_key(&self, project: &Project<ID>, title: Title) -> String;
+    fn display_project_title(&self, project: &Project<ID>, title: Title, title_key: Option<impl AsRef<str>>);
     fn display_steps_list(&self, project: &Project<ID>, config: &DisplayProjectConfig);
     fn display_projects_list(&self, config: &DisplayProjectConfig);
 }
 
 impl<ID: HashedId + Clone + Display> DisplayList<ID> for FsTracker<ID> {
-    fn display_project_title(&self, project: &Project<ID>, title: Title) {
+    fn format_project_title_key(&self, project: &Project<ID>, title: Title) -> String {
+        let mut output = String::new();
+        format_project_title_key_inner(self, project, title, &mut output);
+        output
+    }
+
+    fn display_project_title(&self, project: &Project<ID>, title: Title, title_key: Option<impl AsRef<str>>) {
         match title {
             Title::Id | Title::IdAndName => out!("["),
             _ => (),
         }
 
-        display_project_title_inner(self, project, title);
+        if let Some(title_key) = title_key {
+            out!("{}", title_key.as_ref());
+        } else {
+            out!("{}", self.format_project_title_key(project, title));
+        }
 
         match title {
             Title::Id => out!("]"),
-            Title::IdAndName => out!("] {name}", name = project.name()),
+            Title::IdAndName => {
+                out!("] {name}", name = project.name())
+            },
             _ => (),
         }
         let steps_count = self
@@ -109,34 +122,40 @@ impl<ID: HashedId + Clone + Display> DisplayList<ID> for FsTracker<ID> {
             outln!("List steps of {count} projects");
         }
 
+        let mut projects = Vec::new();
         for project in self.projects().values() {
             let title = if matches!(config.title, Title::IdAndName) && project.name().is_empty() {
                 Title::Id
             } else {
                 config.title
             };
+            projects.push((self.format_project_title_key(project, title), title, project));
+        }
 
-            outln!();
-            self.display_project_title(project, title);
-            outln!();
+        projects.sort_by(|(title_key1, ..), (title_key2, ..)| title_key1.cmp(title_key2));
 
+        for (title_key, title, project) in projects {
+            outln!();
+            self.display_project_title(project, title, Some(title_key));
+            outln!();
             self.display_steps_list(project, config);
         }
     }
 }
 
-fn display_project_title_inner<ID>(tracker: &FsTracker<ID>, project: &Project<ID>, title: Title)
+fn format_project_title_key_inner<ID>(tracker: &FsTracker<ID>, project: &Project<ID>, title: Title, output: &mut String)
 where
     ID: HashedId + Clone + Display,
 {
     if let Some(parent_id) = project.parent_id() {
         if let Some(parent) = tracker.projects().get(parent_id) {
-            display_project_title_inner(tracker, parent, title);
-            out!("/");
+            format_project_title_key_inner(tracker, parent, title, output);
+            write!(output, "/").expect("Failed to write to string");
         }
     }
     match title {
-        Title::Id | Title::IdAndName => out!("{id}", id = project.id()),
-        Title::Name => out!("{name}", name = project.name()),
+        Title::Id | Title::IdAndName => write!(output, "{id}", id = project.id()),
+        Title::Name => write!(output, "{name}", name = project.name()),
     }
+    .expect("Failed to write to string");
 }
