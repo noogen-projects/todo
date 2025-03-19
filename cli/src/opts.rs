@@ -10,20 +10,23 @@ pub struct CliOpts {
     #[arg(short, long)]
     pub config_file: Option<PathBuf>,
 
+    /// Work in global mode
+    #[arg(short, long)]
+    pub global: bool,
+
     #[command(subcommand)]
     pub command: Command,
 }
 
 #[derive(Subcommand)]
 pub enum Command {
-    #[command(flatten)]
-    Default(Cmd),
-
     New(NewProject),
 
     Init(InitProject),
 
     Add(AddIssue),
+
+    List(List),
 
     #[command(subcommand)]
     Issue(Cmd),
@@ -72,7 +75,7 @@ pub struct InitProject {
     pub location: Option<String>,
 }
 
-#[derive(Parser)]
+#[derive(Parser, Clone)]
 pub struct AddIssue {
     /// The location of the project to add issue (current directory project by default)
     #[command(flatten)]
@@ -109,7 +112,7 @@ impl Order {
     }
 }
 
-#[derive(Parser)]
+#[derive(Parser, Clone)]
 pub struct ProjectLocation {
     /// Project location (path, id or name)
     #[arg(short, long, conflicts_with_all = &["project_path", "project_id", "project_name"])]
@@ -143,4 +146,18 @@ impl ProjectLocation {
             .or(project_id.map(Location::Id))
             .or(project_name.map(Location::Name))
     }
+}
+
+#[derive(Parser, Clone)]
+pub struct List {
+    /// Maximum number of steps in list (issues and milestones)
+    #[arg(short = 's', long)]
+    pub max_steps: Option<usize>,
+
+    /// Listing root location (exists directory path by example, current directory by default)
+    pub location: Option<String>,
+
+    /// The location of the project to list steps
+    #[command(flatten)]
+    pub project_location: ProjectLocation,
 }

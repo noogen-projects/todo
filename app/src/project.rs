@@ -1,24 +1,24 @@
 use std::{env, fs};
 
 use anyhow::{anyhow, Context};
-use todo_tracker_fs::config::{ProjectConfig, SerializedId};
+use todo_tracker_fs::config::{FsProjectConfig, SerializedId};
 use todo_tracker_fs::file::find_by_name_part;
 
-pub use self::data::{FsProjectData, ProjectData};
+pub use self::metadata::{FsProjectMetadata, ProjectData};
 use crate::config::SourceConfig;
 use crate::target::Location;
 
-pub mod data;
+pub mod metadata;
 
-pub fn create<ID: SerializedId>(ProjectData::Fs(project_data): ProjectData<ID>) -> anyhow::Result<()> {
-    let FsProjectData {
+pub fn create<ID: SerializedId>(ProjectData::Fs(project_metadata): ProjectData<ID>) -> anyhow::Result<()> {
+    let FsProjectMetadata {
         id,
         name,
         root_dir,
         is_current_dir_parent: _,
         config_placement,
         config,
-    } = project_data;
+    } = project_metadata;
     if root_dir.exists() {
         return Err(anyhow!("destination `{}` already exists", root_dir.display()));
     }
@@ -29,10 +29,10 @@ pub fn create<ID: SerializedId>(ProjectData::Fs(project_data): ProjectData<ID>) 
         if let Some(project_config) = config {
             project_config.save(destination)?;
         } else if let Some(id) = id {
-            let project_config = ProjectConfig::new(id).with_name(name);
+            let project_config = FsProjectConfig::new(id).with_name(name);
             project_config.save(destination)?;
         } else {
-            let project_config = ProjectConfig::new(name.clone()).with_name(name);
+            let project_config = FsProjectConfig::new(name.clone()).with_name(name);
             project_config.save(destination)?;
         }
     }
@@ -41,17 +41,17 @@ pub fn create<ID: SerializedId>(ProjectData::Fs(project_data): ProjectData<ID>) 
 }
 
 pub fn init<ID: SerializedId>(
-    ProjectData::Fs(project_data): ProjectData<ID>,
+    ProjectData::Fs(project_metadata): ProjectData<ID>,
     source_config: &SourceConfig,
 ) -> anyhow::Result<()> {
-    let FsProjectData {
+    let FsProjectMetadata {
         id,
         name,
         root_dir,
         is_current_dir_parent: _,
         config_placement,
         config,
-    } = project_data;
+    } = project_metadata;
     if !root_dir.exists() {
         return Err(anyhow!("destination `{}` does not exists", root_dir.display()));
     }
@@ -84,10 +84,10 @@ pub fn init<ID: SerializedId>(
         if let Some(project_config) = config {
             project_config.save(destination)?;
         } else if let Some(id) = id {
-            let project_config = ProjectConfig::new(id).with_name(name);
+            let project_config = FsProjectConfig::new(id).with_name(name);
             project_config.save(destination)?;
         } else {
-            let project_config = ProjectConfig::new(name.clone()).with_name(name);
+            let project_config = FsProjectConfig::new(name.clone()).with_name(name);
             project_config.save(destination)?;
         }
     }

@@ -8,7 +8,7 @@ use todo_lib::id::HashedId;
 use todo_lib::plan::Plan;
 use todo_lib::project::Project;
 
-use crate::config::ProjectConfig;
+use crate::config::FsProjectConfig;
 use crate::file::find_by_regex;
 use crate::generator::IntIdGenerator;
 use crate::plan::LoadProjectPlan;
@@ -24,7 +24,7 @@ pub struct FsTracker<PID = String, ID = u64> {
 
 impl<PID: HashedId + Clone> FsTracker<PID> {
     pub fn new(
-        project_configs: IndexMap<PID, ProjectConfig<PID>>,
+        project_configs: IndexMap<PID, FsProjectConfig<PID>>,
         manifest_filename_regex: &Regex,
         todo_filename_regex: &Regex,
     ) -> io::Result<Self> {
@@ -77,17 +77,17 @@ impl<PID: HashedId + Clone> FsTracker<PID> {
         subprojects
     }
 
-    pub fn project_issues(&self, id: &PID) -> Option<&Plan<u64>> {
+    pub fn project_plan(&self, id: &PID) -> Option<&Plan<u64>> {
         self.planes.get(id)
     }
 
-    pub fn project_path(&self, id: &PID) -> Option<&Path> {
+    pub fn project_root_dir(&self, id: &PID) -> Option<&Path> {
         self.project_root_dirs.get(id).map(|path| path.as_path())
     }
 }
 
 pub fn load_project_plan<PID>(
-    project_config: &ProjectConfig<PID>,
+    project_config: &FsProjectConfig<PID>,
     manifest_filename_regex: &Regex,
     issues_filename_regex: &Regex,
 ) -> io::Result<Option<Plan<u64>>>

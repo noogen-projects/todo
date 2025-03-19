@@ -1,9 +1,8 @@
-use std::collections::BTreeMap;
 use std::io;
 use std::path::{Path, PathBuf};
 
 use fs_err as fs;
-use indexmap::IndexSet;
+use indexmap::{IndexMap, IndexSet};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use todo_lib::id::HashedId;
@@ -36,7 +35,7 @@ pub trait DeserializedId: for<'a> Deserialize<'a> + HashedId {}
 impl<T> DeserializedId for T where T: for<'a> Deserialize<'a> + HashedId {}
 
 #[derive(Debug, Default, Serialize, Deserialize)]
-pub struct ProjectConfig<ID: HashedId = String> {
+pub struct FsProjectConfig<ID: HashedId = String> {
     pub id: ID,
 
     pub name: Option<String>,
@@ -56,7 +55,7 @@ pub struct ProjectConfig<ID: HashedId = String> {
     pub subprojects: IndexSet<ID>,
 }
 
-impl<ID: HashedId> ProjectConfig<ID> {
+impl<ID: HashedId> FsProjectConfig<ID> {
     const MD_BLOCK_START: &'static str = "```toml project";
     const MD_BLOCK_END: &'static str = "```";
 
@@ -83,7 +82,7 @@ impl<ID: HashedId> ProjectConfig<ID> {
     }
 }
 
-impl<ID: DeserializedId> ProjectConfig<ID> {
+impl<ID: DeserializedId> FsProjectConfig<ID> {
     pub fn from_toml(content: &str) -> Result<Self, toml::de::Error> {
         toml::from_str(content)
     }
@@ -116,7 +115,7 @@ impl<ID: DeserializedId> ProjectConfig<ID> {
     }
 }
 
-impl<ID: SerializedId> ProjectConfig<ID> {
+impl<ID: SerializedId> FsProjectConfig<ID> {
     pub fn to_toml(&self) -> Result<String, toml::ser::Error> {
         toml::to_string(self)
     }
@@ -169,25 +168,59 @@ impl<ID: SerializedId> ProjectConfig<ID> {
     }
 }
 
+struct Parent<ID> {
+    id: ID,
+    root_dir: PathBuf,
+}
+
 pub fn find_projects<ID>(
     search_roots: impl IntoIterator<Item = impl AsRef<Path>>,
     get_project_config_placement: impl Fn(&Path) -> Option<Placement<PathBuf>>,
-) -> BTreeMap<ID, ProjectConfig<ID>>
+) -> IndexMap<ID, FsProjectConfig<ID>>
 where
     ID: DeserializedId + Ord + Clone,
 {
-    let mut projects = BTreeMap::new();
+    let mut projects: IndexMap<ID, FsProjectConfig<ID>> = IndexMap::new();
+    let mut parents: Vec<Parent<ID>> = Vec::new();
 
     for root in search_roots {
         for entry in WalkDir::new(root).follow_links(true).into_iter().filter_map(Result::ok) {
             let path = entry.path();
-            if let Some(project_config_placement) = get_project_config_placement(path) {
-                if let Ok(mut project_config) = ProjectConfig::<ID>::load(&project_config_placement) {
-                    if project_config.root_dir.is_none() {
-                        project_config.root_dir = Some(path.to_owned());
+
+            let mut parent = loop {
+                if let Some(parent) = parents.pop() {
+                    if path.starts_with(&parent.root_dir) {
+                        break Some(parent);
                     }
+                } else {
+                    break None;
+                }
+            };
+
+            if let Some(project_config_placement) = get_project_config_placement(path) {
+                let root_dir = project_config_placement.as_ref().parent();
+                if let Ok(mut project_config) = FsProjectConfig::<ID>::load(&project_config_placement) {
+                    if project_config.root_dir.is_none() {
+                        project_config.root_dir = root_dir.map(ToOwned::to_owned);
+                    }
+
+                    if let Some(parent) = parent {
+                        if let Some(parent_project_config) = projects.get_mut(&parent.id) {
+                            parent_project_config.subprojects.insert(project_config.id.clone());
+                        }
+                        parents.push(parent);
+                    }
+
+                    parent = Some(Parent {
+                        id: project_config.id.clone(),
+                        root_dir: project_config.root_dir.clone().unwrap_or_default(),
+                    });
                     projects.insert(project_config.id.clone(), project_config);
                 }
+            }
+
+            if let Some(parent) = parent {
+                parents.push(parent);
             }
         }
     }

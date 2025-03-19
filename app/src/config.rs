@@ -7,7 +7,7 @@ use config::{Environment, File};
 use indexmap::{IndexMap, IndexSet};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use todo_tracker_fs::config::{LoadConfigError, ProjectConfig as TrackerProjectConfig};
+use todo_tracker_fs::config::{DeserializedId, FsProjectConfig};
 use todo_tracker_fs::file::{find_by_name_part, find_in_dir_and_parents};
 use todo_tracker_fs::Placement;
 
@@ -102,12 +102,18 @@ pub struct ProjectConfig {
 }
 
 impl ProjectConfig {
-    pub fn load_tracker_project_config(
+    pub fn load_fs_project_config<ID>(
         &self,
-        project_id: impl Into<String>,
+        project_id: ID,
         config: &SourceConfig,
-    ) -> Option<Result<TrackerProjectConfig, LoadConfigError>> {
-        let mut project_path = self.path.clone()?;
+    ) -> anyhow::Result<Option<FsProjectConfig<ID>>>
+    where
+        ID: DeserializedId + TryFrom<String>,
+        <ID as TryFrom<String>>::Error: Into<anyhow::Error>,
+    {
+        let Some(mut project_path) = self.path.clone() else {
+            return Ok(None);
+        };
 
         if let Some(projects_root_dir) = &config.projects_root_dir {
             if project_path.is_relative() {
@@ -115,42 +121,47 @@ impl ProjectConfig {
             }
         }
 
-        let config_placement = config.find_config_placement(&project_path, None)?;
+        let Some(config_placement) = config.find_project_config_placement(&project_path, None) else {
+            return Ok(None);
+        };
 
-        let mut config = match TrackerProjectConfig::load(&config_placement) {
+        let mut config = match FsProjectConfig::load(&config_placement) {
             Ok(config) => config,
             Err(err) => {
                 if project_path.is_dir() {
-                    TrackerProjectConfig::new(project_id.into())
+                    FsProjectConfig::new(project_id)
                 } else {
-                    return Some(Err(err));
+                    return Err(err.into());
                 }
             },
         };
 
         config.root_dir = Some(project_path);
-        if !self.subprojects.is_empty() {
-            config.subprojects.clone_from(&self.subprojects);
+        for subproject_id in &self.subprojects {
+            let id = ID::try_from(subproject_id.clone()).map_err(Into::into)?;
+            config.subprojects.insert(id);
         }
 
-        Some(Ok(config))
+        Ok(Some(config))
     }
 }
 
 #[derive(Copy, Clone, Debug, Default, Deserialize, Serialize)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "snake_case")]
 pub enum Title {
     #[default]
     Id,
     Name,
-    IdName,
+    IdAndName,
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 #[serde(default)]
 pub struct DisplayProjectConfig {
     pub title: Title,
-    pub steps: usize,
+    pub max_steps: Option<usize>,
+    pub show_substeps: bool,
+    pub compact: bool,
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -275,7 +286,7 @@ impl SourceConfig {
             .join(self.project_issues_file_name(project_name.unwrap_or_default()))
     }
 
-    pub fn find_config_placement(
+    pub fn find_project_config_placement(
         &self,
         root_dir: impl AsRef<Path>,
         project_name: Option<&str>,
@@ -284,10 +295,10 @@ impl SourceConfig {
         if project_config_file.exists() {
             Some(Placement::WholeFile(project_config_file))
         } else {
-            let manifest_file = self.make_manifest_file_path(root_dir, project_name);
-            manifest_file
+            let project_manifest_file = self.make_manifest_file_path(root_dir, project_name);
+            project_manifest_file
                 .exists()
-                .then_some(Placement::CodeBlockInFile(manifest_file))
+                .then_some(Placement::CodeBlockInFile(project_manifest_file))
         }
     }
 

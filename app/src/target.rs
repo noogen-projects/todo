@@ -22,7 +22,7 @@ pub enum Location<ID = String> {
 impl<ID> Location<ID> {
     pub fn from_unknown(location: impl Into<String>) -> Self {
         let location = location.into();
-        if location.chars().any(path::is_separator) {
+        if location == "." || location == ".." || location.chars().any(path::is_separator) {
             Self::Path(PathBuf::from(location))
         } else {
             Self::Name(location)

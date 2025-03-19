@@ -3,14 +3,14 @@ use std::{env, io};
 
 use anyhow::anyhow;
 use todo_lib::id::HashedId;
-use todo_tracker_fs::config::{DeserializedId, ProjectConfig};
+use todo_tracker_fs::config::{DeserializedId, FsProjectConfig};
 use todo_tracker_fs::Placement;
 
 use crate::config::SourceConfig;
 use crate::target::{Location, Target, TrackerType};
 
 pub enum ProjectData<ID: HashedId = String> {
-    Fs(FsProjectData<ID>),
+    Fs(FsProjectMetadata<ID>),
 }
 
 impl<ID: HashedId + ToString> TryFrom<Target<ID>> for ProjectData<ID> {
@@ -19,22 +19,22 @@ impl<ID: HashedId + ToString> TryFrom<Target<ID>> for ProjectData<ID> {
     fn try_from(target: Target<ID>) -> Result<Self, Self::Error> {
         let location = target.location;
         match target.tracker {
-            TrackerType::Fs => Ok(ProjectData::Fs(FsProjectData::try_from(location)?)),
+            TrackerType::Fs => Ok(ProjectData::Fs(FsProjectMetadata::try_from(location)?)),
         }
     }
 }
 
 #[derive(Debug)]
-pub struct FsProjectData<ID: HashedId> {
+pub struct FsProjectMetadata<ID: HashedId> {
     pub id: Option<ID>,
     pub name: String,
     pub root_dir: PathBuf,
     pub is_current_dir_parent: bool,
     pub config_placement: Option<Placement<PathBuf>>,
-    pub config: Option<ProjectConfig<ID>>,
+    pub config: Option<FsProjectConfig<ID>>,
 }
 
-impl<ID: HashedId> Default for FsProjectData<ID> {
+impl<ID: HashedId> Default for FsProjectMetadata<ID> {
     fn default() -> Self {
         Self {
             id: None,
@@ -47,9 +47,9 @@ impl<ID: HashedId> Default for FsProjectData<ID> {
     }
 }
 
-impl<ID: HashedId + Default> FsProjectData<ID> {
-    pub fn into_config(self) -> (ProjectConfig<ID>, Option<Placement<PathBuf>>) {
-        let FsProjectData {
+impl<ID: HashedId + Default> FsProjectMetadata<ID> {
+    pub fn into_config(self) -> (FsProjectConfig<ID>, Option<Placement<PathBuf>>) {
+        let FsProjectMetadata {
             id,
             name,
             root_dir,
@@ -57,7 +57,7 @@ impl<ID: HashedId + Default> FsProjectData<ID> {
             config_placement,
             config,
         } = self;
-        let mut config = config.unwrap_or_else(|| ProjectConfig::new(id.unwrap_or_default()));
+        let mut config = config.unwrap_or_else(|| FsProjectConfig::new(id.unwrap_or_default()));
 
         if config.name.is_none() {
             config.name = Some(name)
@@ -71,7 +71,7 @@ impl<ID: HashedId + Default> FsProjectData<ID> {
     }
 }
 
-impl<ID: HashedId + ToString> FsProjectData<ID> {
+impl<ID: HashedId + ToString> FsProjectMetadata<ID> {
     pub fn from_location(location: Location<ID>) -> anyhow::Result<Self> {
         Ok(match location {
             Location::Path(path) => Self::default()
@@ -161,29 +161,15 @@ impl<ID: HashedId + ToString> FsProjectData<ID> {
     }
 
     pub fn set_config_placement_if_exist(&mut self, config: &SourceConfig) -> bool {
-        let project_config_file = self.root_dir.join(&config.project_config_file);
-        if project_config_file.exists() {
-            self.config_placement.replace(Placement::WholeFile(project_config_file));
-            true
-        } else {
-            let project_manifest_file_name = config.project_manifest_file_name(&self.name);
-            let project_manifest_file = self.root_dir.join(project_manifest_file_name);
-            if project_manifest_file.exists() {
-                self.config_placement
-                    .replace(Placement::CodeBlockInFile(project_manifest_file));
-                true
-            } else {
-                self.config_placement = None;
-                false
-            }
-        }
+        self.config_placement = config.find_project_config_placement(&self.root_dir, Some(&self.name));
+        self.config_placement.is_some()
     }
 }
 
-impl<ID: DeserializedId + Clone> FsProjectData<ID> {
+impl<ID: DeserializedId + Clone> FsProjectMetadata<ID> {
     pub fn update_from_config(&mut self) -> anyhow::Result<()> {
         if let Some(source) = &self.config_placement {
-            let project_config = ProjectConfig::<ID>::load(source)?;
+            let project_config = FsProjectConfig::<ID>::load(source)?;
 
             if let Some(name) = &project_config.name {
                 self.name = name.clone()
@@ -199,7 +185,7 @@ impl<ID: DeserializedId + Clone> FsProjectData<ID> {
     }
 }
 
-impl<ID: HashedId + ToString> TryFrom<Location<ID>> for FsProjectData<ID> {
+impl<ID: HashedId + ToString> TryFrom<Location<ID>> for FsProjectMetadata<ID> {
     type Error = anyhow::Error;
 
     fn try_from(location: Location<ID>) -> Result<Self, Self::Error> {

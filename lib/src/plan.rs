@@ -45,7 +45,7 @@ impl<ID: HashedId + PartialEq + Clone> Plan<ID> {
         self.milestones.get(id)
     }
 
-    pub fn steps(&self) -> impl IntoIterator<Item = &Step<ID>> {
+    pub fn steps(&self) -> &IndexSet<Step<ID>> {
         &self.steps
     }
 

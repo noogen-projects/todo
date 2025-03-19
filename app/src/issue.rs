@@ -16,13 +16,13 @@ pub enum Order {
 }
 
 pub fn add<ID: HashedId + Default>(
-    ProjectData::Fs(project_data): ProjectData<ID>,
+    ProjectData::Fs(project_metadata): ProjectData<ID>,
     config: &SourceConfig,
     order: Order,
     name: impl AsRef<str> + Into<String>,
     content: impl Into<String>,
 ) -> io::Result<()> {
-    let (project_config, _) = project_data.into_config();
+    let (project_config, _) = project_metadata.into_config();
 
     if let Some(plan) = tracker::load_project_plan(
         &project_config,
