@@ -3,6 +3,10 @@ name = "todo-cli"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "todo"
+path = "src/main.rs"
+
 [dependencies]
 anyhow = { workspace = true }
 clap = { version = "4.3", features = ["derive"] }
@@ -13,7 +17,7 @@ todo-lib = { path = "../lib" }
 todo-tracker-fs = { path = "../tracker-fs" }
 
 [dev-dependencies]
-regex = { workspace = true }
-temp_testdir = "0.2"
 assert_cmd = "2.0"
 pulldown-cmark = "0.13"
+regex = { workspace = true }
+temp_testdir = "0.2"

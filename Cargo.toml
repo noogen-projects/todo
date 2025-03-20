@@ -11,9 +11,9 @@ members = [
 [profile.release]
 lto = true
 
-    [workspace.dependencies]
-    regex = "1.11"
-    anyhow = "1.0"
-    indexmap = { version = "2.7", features = ["serde"] }
-    serde = { version = "1.0", features = ["derive"] }
-    thiserror = "2.0"
+[workspace.dependencies]
+anyhow = "1.0"
+indexmap = { version = "2.7", features = ["serde"] }
+regex = "1.11"
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "2.0"

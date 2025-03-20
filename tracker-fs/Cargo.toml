@@ -18,5 +18,5 @@ walkdir = "2.5"
 [dev-dependencies]
 anyhow = { workspace = true }
 function_name = "0.3"
-tests = { path = "../tests" }
 temp_testdir = "0.2"
+tests = { path = "../tests" }
