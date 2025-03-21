@@ -8,6 +8,7 @@ use todo_tracker_fs::{tracker, Placement};
 use crate::config::SourceConfig;
 use crate::project::ProjectData;
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Order {
     First,
     Last,

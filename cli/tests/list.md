@@ -131,8 +131,8 @@ $ todo list .
 List steps of 4 projects
 
 [project A]: 2
-- task 2
 - task 1
+- task 2
 
 [project A/project C]: 1
 - task 1
@@ -147,8 +147,8 @@ $ todo list "project A"
 List steps of 1 project
 
 [project A]: 2
-- task 2
 - task 1
+- task 2
 ```
 
 ```sh
@@ -157,8 +157,8 @@ $ todo list
 List steps of 3 projects
 
 [project A]: 2
-- task 2
 - task 1
+- task 2
 
 [project A/project C]: 1
 - task 1
@@ -198,13 +198,13 @@ $ todo list .
 List steps of 4 projects
 
 [project A]: 3
-- task 3
-- task 2
 - task 1
+- task 2
+- task 3
 
 [project A/project C]: 2
-- task 2
 - task 1
+- task 2
 
 [project A/project D]: 1
 - task D-1
@@ -217,9 +217,9 @@ $ todo list "project A"
 List steps of 1 project
 
 [project A]: 3
-- task 3
-- task 2
 - task 1
+- task 2
+- task 3
 ```
 
 ```sh
@@ -228,13 +228,13 @@ $ todo list
 List steps of 3 projects
 
 [project A]: 3
-- task 3
-- task 2
 - task 1
+- task 2
+- task 3
 
 [project A/project C]: 2
-- task 2
 - task 1
+- task 2
 
 [project A/project D]: 1
 - task D-1
@@ -246,8 +246,8 @@ $ todo list
 List steps of 1 project
 
 [project C]: 2
-- task 2
 - task 1
+- task 2
 ```
 
 ```sh
@@ -267,7 +267,7 @@ $ todo add "task B-1"
 
 ```sh
 $ cd "project B"
-$ todo add --last "task B-2"
+$ todo add --first "task B-2"
     Adding `task B-2` issue to `project B` project
 ```
 
@@ -276,20 +276,20 @@ $ todo list .
 List steps of 4 projects
 
 [project A]: 3
-- task 3
-- task 2
 - task 1
+- task 2
+- task 3
 
 [project A/project C]: 2
-- task 2
 - task 1
+- task 2
 
 [project A/project D]: 1
 - task D-1
 
 [project B]: 2
-- task B-1
 - task B-2
+- task B-1
 ```
 
 ```sh
@@ -298,6 +298,6 @@ $ todo list
 List steps of 1 project
 
 [project B]: 2
-- task B-1
 - task B-2
+- task B-1
 ```

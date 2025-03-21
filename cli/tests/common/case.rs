@@ -85,7 +85,7 @@ impl TestCase {
                 Err(parts) => {
                     if let [name, args @ ..] = &parts[..] {
                         let mut cmd = if *name == self.cargo_bin_alias {
-                            Command::cargo_bin(env!("CARGO_PKG_NAME"))?
+                            Command::cargo_bin(env!("CARGO_BIN_EXE_todo"))?
                         } else {
                             Command::cargo_bin(name)?
                         };

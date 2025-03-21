@@ -79,8 +79,8 @@ pub struct IssueConfig {
 
 #[derive(Copy, Clone, Default, Debug, Deserialize, Serialize)]
 pub enum IssueAddOrder {
-    #[default]
     First,
+    #[default]
     Last,
 }
 

@@ -92,11 +92,11 @@ pub struct AddIssue {
 #[derive(Parser, Clone, Copy)]
 pub struct Order {
     /// Issue will be added to the top of the list
-    #[arg(short, long)]
+    #[arg(short, long, conflicts_with = "last")]
     pub first: bool,
 
     /// Issue will be added to the bottom of the list
-    #[arg(short, long)]
+    #[arg(short, long, conflicts_with = "first")]
     pub last: bool,
 }
 

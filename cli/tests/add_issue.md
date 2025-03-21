@@ -43,8 +43,8 @@ $ todo add "task 2"
 
 ```sh
 $ cat "project A/TODO.md"
-- task 2
 - task 1
+- task 2
 ```
 
 ```sh
@@ -68,21 +68,35 @@ Project.toml TODO.md
 
 ```sh
 $ cat "project A/TODO.md"
-- task 2
 - task 1
+- task 2
 ```
 
 ```sh
 $ cd "project A"
-$ todo add --last "task 3"
+$ todo add --first "task 3"
     Adding `task 3` issue to `project A` project
 ```
 
 ```sh
 $ cat "project A/TODO.md"
-- task 2
-- task 1
 - task 3
+- task 1
+- task 2
+```
+
+```sh
+$ cd "project A"
+$ todo add --last "task 4"
+    Adding `task 4` issue to `project A` project
+```
+
+```sh
+$ cat "project A/TODO.md"
+- task 3
+- task 1
+- task 2
+- task 4
 ```
 
 ## Add issue to specifyed project
@@ -121,20 +135,33 @@ $ todo add "task 2" --project "project A"
 
 ```sh
 $ cat "project A/TODO.md"
-- task 2
 - task 1
+- task 2
 ```
 
 ```sh
-$ todo add --last "task 3" --project "project A"
+$ todo add --first "task 3" --project "project A"
     Adding `task 3` issue to `project A` project
 ```
 
 ```sh
 $ cat "project A/TODO.md"
-- task 2
-- task 1
 - task 3
+- task 1
+- task 2
+```
+
+```sh
+$ todo add --last "task 4" --project "project A"
+    Adding `task 4` issue to `project A` project
+```
+
+```sh
+$ cat "project A/TODO.md"
+- task 3
+- task 1
+- task 2
+- task 4
 ```
 
 ```sh
@@ -198,13 +225,13 @@ id = "project B"
 name = "project B"
 ```
 ```md todo
-- task 2
 - task 1
+- task 2
 ```
 ````
 
 ```sh
-$ todo add --last --project "project B" "task 3"
+$ todo add --first --project "project B" "task 3"
     Adding `task 3` issue to `project B` project
 ```
 
@@ -217,9 +244,30 @@ id = "project B"
 name = "project B"
 ```
 ```md todo
-- task 2
-- task 1
 - task 3
+- task 1
+- task 2
+```
+````
+
+```sh
+$ todo add --last --project "project B" "task 4"
+    Adding `task 4` issue to `project B` project
+```
+
+````sh
+$ cat "project B/project B.manifest.md"
+# project B
+
+```toml project
+id = "project B"
+name = "project B"
+```
+```md todo
+- task 3
+- task 1
+- task 2
+- task 4
 ```
 ````
 
@@ -273,8 +321,8 @@ $ todo add "task 2" --project "project C"
 
 ```sh
 $ cat "project A/project C/TODO.md"
-- task 2
 - task 1
+- task 2
 ```
 
 ```sh
@@ -303,21 +351,35 @@ Project.toml TODO.md
 
 ```sh
 $ cat "project A/project C/TODO.md"
-- task 2
 - task 1
+- task 2
 ```
 
 ```sh
 $ cd "project A"
-$ todo add --last --project "project C" "task 3"
+$ todo add --first --project "project C" "task 3"
     Adding `task 3` issue to `project C` project
 ```
 
 ```sh
 $ cat "project A/project C/TODO.md"
-- task 2
-- task 1
 - task 3
+- task 1
+- task 2
+```
+
+```sh
+$ cd "project A"
+$ todo add --last --project "project C" "task 4"
+    Adding `task 4` issue to `project C` project
+```
+
+```sh
+$ cat "project A/project C/TODO.md"
+- task 3
+- task 1
+- task 2
+- task 4
 ```
 
 ## Add issue inside subproject dir
@@ -396,14 +458,14 @@ id = "project D"
 name = "project D"
 ```
 ```md todo
-- task 2
 - task 1
+- task 2
 ```
 ````
 
 ```sh
 $ cd "project A/project D"
-$ todo add --last "task 3"
+$ todo add --first "task 3"
     Adding `task 3` issue to `project D` project
 ```
 
@@ -416,8 +478,30 @@ id = "project D"
 name = "project D"
 ```
 ```md todo
-- task 2
-- task 1
 - task 3
+- task 1
+- task 2
+```
+````
+
+```sh
+$ cd "project A/project D"
+$ todo add --last "task 4"
+    Adding `task 4` issue to `project D` project
+```
+
+````sh
+$ cat "project A/project D/project D.manifest.md"
+# project D
+
+```toml project
+id = "project D"
+name = "project D"
+```
+```md todo
+- task 3
+- task 1
+- task 2
+- task 4
 ```
 ````
