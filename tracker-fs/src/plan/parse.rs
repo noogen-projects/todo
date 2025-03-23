@@ -50,7 +50,7 @@ where
 {
     fn regex() -> &'static Regex {
         static ISSUE_REGEX: Lazy<Regex> =
-            Lazy::new(|| Regex::new(r"^\s*[-|+]\s+([0-9]+\s)?\s*(.*)").expect("regex must be correct"));
+            Lazy::new(|| Regex::new(r"^\s*[-+]\s+([0-9]+\s)?\s*(.*)").expect("regex must be correct"));
         &ISSUE_REGEX
     }
 

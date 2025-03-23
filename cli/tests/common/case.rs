@@ -31,15 +31,38 @@ impl TestCase {
     pub fn parse(source: impl AsRef<str>, source_path: Option<PathBuf>, source_line: Option<usize>) -> Self {
         let mut commands = Vec::new();
         let mut expected_output = String::new();
+        let mut multiline_command: Option<String> = None;
 
         // Split into commands and expected output
         for line in source.as_ref().lines() {
+            if let Some(mut command) = multiline_command.take() {
+                command.push('\n');
+                if line.ends_with('\\') {
+                    if line.len() > 1 {
+                        command.push_str(&line[..line.len() - 1]);
+                    }
+                    multiline_command = Some(command);
+                } else {
+                    command.push_str(line);
+                    commands.push(command);
+                }
+                continue;
+            }
+
             if line.starts_with("$ ") {
-                commands.push(line[2..].to_string());
+                if line.ends_with('\\') {
+                    multiline_command = Some(line[2..line.len() - 1].to_string());
+                } else {
+                    commands.push(line[2..].to_string());
+                }
             } else if !commands.is_empty() {
                 expected_output.push_str(line);
                 expected_output.push('\n');
             }
+        }
+
+        if let Some(command) = multiline_command {
+            commands.push(command);
         }
 
         // Remove trailing newline

@@ -52,7 +52,7 @@ where
     fn load_to_lines(
         source: &Placement<impl AsRef<Path>>,
     ) -> io::Result<impl IntoIterator<Item = (usize, io::Result<String>)>> {
-        Ok(match source {
+        let lines = match source {
             Placement::WholeFile(path) => {
                 let file = fs::File::open(path.as_ref())?;
                 Either::Left(io::BufReader::new(file).lines().enumerate())
@@ -89,7 +89,8 @@ where
                     }
                 }))
             },
-        })
+        };
+        Ok(lines)
     }
 
     fn load_from_lines(

@@ -22,7 +22,13 @@ macro_rules! outln {
 
 pub trait DisplayList<ID> {
     fn format_project_title_key(&self, project: &Project<ID>, title: Title) -> String;
-    fn display_project_title(&self, project: &Project<ID>, title: Title, title_key: Option<impl AsRef<str>>);
+    fn display_project_title(
+        &self,
+        project: &Project<ID>,
+        title: Title,
+        title_key: Option<impl AsRef<str>>,
+        config: &DisplayProjectConfig,
+    );
     fn display_steps_list(&self, project: &Project<ID>, config: &DisplayProjectConfig);
     fn display_projects_list(&self, config: &DisplayProjectConfig);
 }
@@ -34,7 +40,13 @@ impl<ID: HashedId + Clone + Display> DisplayList<ID> for FsTracker<ID> {
         output
     }
 
-    fn display_project_title(&self, project: &Project<ID>, title: Title, title_key: Option<impl AsRef<str>>) {
+    fn display_project_title(
+        &self,
+        project: &Project<ID>,
+        title: Title,
+        title_key: Option<impl AsRef<str>>,
+        config: &DisplayProjectConfig,
+    ) {
         match title {
             Title::Id | Title::IdAndName => out!("["),
             _ => (),
@@ -55,7 +67,20 @@ impl<ID: HashedId + Clone + Display> DisplayList<ID> for FsTracker<ID> {
         }
         let steps_count = self
             .project_plan(project.id())
-            .map(|plan| plan.steps().len())
+            .map(|plan| {
+                plan.steps().iter().fold(0_usize, |count, step| {
+                    if !config.show_substeps {
+                        if let Step::Issue(id) = step {
+                            if let Some(issue) = plan.get_issue(id) {
+                                if issue.parent_id.is_some() {
+                                    return count;
+                                }
+                            }
+                        }
+                    }
+                    count + 1
+                })
+            })
             .unwrap_or(0);
         out!(": {steps_count}")
     }
@@ -140,7 +165,7 @@ impl<ID: HashedId + Clone + Display> DisplayList<ID> for FsTracker<ID> {
             if !config.compact {
                 outln!();
             }
-            self.display_project_title(project, title, Some(title_key));
+            self.display_project_title(project, title, Some(title_key), config);
             outln!();
             self.display_steps_list(project, config);
         }
