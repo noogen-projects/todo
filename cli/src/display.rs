@@ -114,12 +114,14 @@ impl<ID: HashedId + Clone + Display> DisplayList<ID> for FsTracker<ID> {
     }
 
     fn display_projects_list(&self, config: &DisplayProjectConfig) {
-        let count = self.projects().len();
+        if !config.compact {
+            let count = self.projects().len();
 
-        if count == 1 {
-            outln!("List steps of {count} project");
-        } else {
-            outln!("List steps of {count} projects");
+            if count == 1 {
+                outln!("List steps of {count} project");
+            } else {
+                outln!("List steps of {count} projects");
+            }
         }
 
         let mut projects = Vec::new();
@@ -135,7 +137,9 @@ impl<ID: HashedId + Clone + Display> DisplayList<ID> for FsTracker<ID> {
         projects.sort_by(|(title_key1, ..), (title_key2, ..)| title_key1.cmp(title_key2));
 
         for (title_key, title, project) in projects {
-            outln!();
+            if !config.compact {
+                outln!();
+            }
             self.display_project_title(project, title, Some(title_key));
             outln!();
             self.display_steps_list(project, config);

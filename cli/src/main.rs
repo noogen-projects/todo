@@ -42,12 +42,16 @@ fn main() -> anyhow::Result<()> {
         },
         Command::List(List {
             max_steps,
+            display,
             location,
             project_location,
         }) => {
             let mut config = profile.config;
             if let Some(max_steps) = max_steps {
                 config.display.project.max_steps = Some(max_steps);
+            }
+            if display.compact || display.pretty {
+                config.display.project.compact = display.compact && !display.pretty;
             }
 
             command::list(location, project_location, global, &config)?;

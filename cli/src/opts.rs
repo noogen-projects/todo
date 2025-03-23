@@ -89,7 +89,24 @@ pub struct AddIssue {
     pub issue: String,
 }
 
-#[derive(Parser, Clone, Copy)]
+#[derive(Parser, Clone)]
+pub struct List {
+    /// Maximum number of steps in list (issues and milestones)
+    #[arg(short = 's', long)]
+    pub max_steps: Option<usize>,
+
+    #[command(flatten)]
+    pub display: DisplayMode,
+
+    /// Listing root location (exists directory path by example, current directory by default)
+    pub location: Option<String>,
+
+    /// The location of the project to list steps
+    #[command(flatten)]
+    pub project_location: ProjectLocation,
+}
+
+#[derive(Parser, Clone, Copy, Debug)]
 pub struct Order {
     /// Issue will be added to the top of the list
     #[arg(short, long, conflicts_with = "last")]
@@ -110,6 +127,17 @@ impl Order {
             None
         }
     }
+}
+
+#[derive(Parser, Clone, Copy, Debug)]
+pub struct DisplayMode {
+    /// Show in compact mode
+    #[arg(long, conflicts_with = "pretty")]
+    pub compact: bool,
+
+    /// Show in pretty mode
+    #[arg(long, conflicts_with = "compact")]
+    pub pretty: bool,
 }
 
 #[derive(Parser, Clone)]
@@ -146,18 +174,4 @@ impl ProjectLocation {
             .or(project_id.map(Location::Id))
             .or(project_name.map(Location::Name))
     }
-}
-
-#[derive(Parser, Clone)]
-pub struct List {
-    /// Maximum number of steps in list (issues and milestones)
-    #[arg(short = 's', long)]
-    pub max_steps: Option<usize>,
-
-    /// Listing root location (exists directory path by example, current directory by default)
-    pub location: Option<String>,
-
-    /// The location of the project to list steps
-    #[command(flatten)]
-    pub project_location: ProjectLocation,
 }
