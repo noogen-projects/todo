@@ -1,6 +1,6 @@
 use std::fmt::{Display, Write};
 
-use todo_app::config::{DisplayProjectConfig, Title};
+use todo_app::config::{DisplayProjectConfig, TitleConsist};
 use todo_lib::id::HashedId;
 use todo_lib::plan::Step;
 use todo_lib::project::Project;
@@ -21,11 +21,11 @@ macro_rules! outln {
 }
 
 pub trait DisplayList<ID> {
-    fn format_project_title_key(&self, project: &Project<ID>, title: Title) -> String;
+    fn format_project_title_key(&self, project: &Project<ID>, title: TitleConsist) -> String;
     fn display_project_title(
         &self,
         project: &Project<ID>,
-        title: Title,
+        title: TitleConsist,
         title_key: Option<impl AsRef<str>>,
         config: &DisplayProjectConfig,
     );
@@ -34,37 +34,48 @@ pub trait DisplayList<ID> {
 }
 
 impl<ID: HashedId + Clone + Display> DisplayList<ID> for FsTracker<ID> {
-    fn format_project_title_key(&self, project: &Project<ID>, title: Title) -> String {
+    fn format_project_title_key(&self, project: &Project<ID>, consist: TitleConsist) -> String {
         let mut output = String::new();
-        format_project_title_key_inner(self, project, title, &mut output);
+        format_project_title_key_inner(self, project, consist, &mut output);
         output
     }
 
     fn display_project_title(
         &self,
         project: &Project<ID>,
-        title: Title,
+        consist: TitleConsist,
         title_key: Option<impl AsRef<str>>,
         config: &DisplayProjectConfig,
     ) {
-        match title {
-            Title::Id | Title::IdAndName => out!("["),
-            _ => (),
+        if let Some(before) = match consist {
+            TitleConsist::Id => &config.title.id_before,
+            TitleConsist::Name => &config.title.name_before,
+            TitleConsist::IdAndName => &config.title.id_and_name_before,
+        } {
+            out!("{before}");
         }
 
         if let Some(title_key) = title_key {
             out!("{}", title_key.as_ref());
         } else {
-            out!("{}", self.format_project_title_key(project, title));
+            out!("{}", self.format_project_title_key(project, consist));
         }
 
-        match title {
-            Title::Id => out!("]"),
-            Title::IdAndName => {
-                out!("] {name}", name = project.name())
-            },
-            _ => (),
+        if let TitleConsist::IdAndName = consist {
+            if let Some(separator) = &config.title.id_and_name_separator {
+                out!("{separator}");
+            }
+            out!("{}", project.name());
         }
+
+        if let Some(after) = match consist {
+            TitleConsist::Id => &config.title.id_after,
+            TitleConsist::Name => &config.title.name_after,
+            TitleConsist::IdAndName => &config.title.id_and_name_after,
+        } {
+            out!("{after}");
+        }
+
         let steps_count = self
             .project_plan(project.id())
             .map(|plan| {
@@ -151,40 +162,44 @@ impl<ID: HashedId + Clone + Display> DisplayList<ID> for FsTracker<ID> {
 
         let mut projects = Vec::new();
         for project in self.projects().values() {
-            let title = if matches!(config.title, Title::IdAndName) && project.name().is_empty() {
-                Title::Id
+            let consist = if matches!(config.title.consist, TitleConsist::IdAndName) && project.name().is_empty() {
+                TitleConsist::Id
             } else {
-                config.title
+                config.title.consist
             };
-            projects.push((self.format_project_title_key(project, title), title, project));
+            projects.push((self.format_project_title_key(project, consist), consist, project));
         }
 
         projects.sort_by(|(title_key1, ..), (title_key2, ..)| title_key1.cmp(title_key2));
 
-        for (title_key, title, project) in projects {
+        for (title_key, consist, project) in projects {
             if !config.compact {
                 outln!();
             }
-            self.display_project_title(project, title, Some(title_key), config);
+            self.display_project_title(project, consist, Some(title_key), config);
             outln!();
             self.display_steps_list(project, config);
         }
     }
 }
 
-fn format_project_title_key_inner<ID>(tracker: &FsTracker<ID>, project: &Project<ID>, title: Title, output: &mut String)
-where
+fn format_project_title_key_inner<ID>(
+    tracker: &FsTracker<ID>,
+    project: &Project<ID>,
+    consist: TitleConsist,
+    output: &mut String,
+) where
     ID: HashedId + Clone + Display,
 {
     if let Some(parent_id) = project.parent_id() {
         if let Some(parent) = tracker.projects().get(parent_id) {
-            format_project_title_key_inner(tracker, parent, title, output);
+            format_project_title_key_inner(tracker, parent, consist, output);
             write!(output, "/").expect("Failed to write to string");
         }
     }
-    match title {
-        Title::Id | Title::IdAndName => write!(output, "{id}", id = project.id()),
-        Title::Name => write!(output, "{name}", name = project.name()),
+    match consist {
+        TitleConsist::Id | TitleConsist::IdAndName => write!(output, "{id}", id = project.id()),
+        TitleConsist::Name => write!(output, "{name}", name = project.name()),
     }
     .expect("Failed to write to string");
 }

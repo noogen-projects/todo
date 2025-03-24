@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::env;
 use std::env::VarError;
 use std::path::{Path, PathBuf};
@@ -148,17 +149,74 @@ impl ProjectConfig {
 
 #[derive(Copy, Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
-pub enum Title {
+pub enum TitleConsist {
     #[default]
     Id,
     Name,
     IdAndName,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(default)]
+pub struct DisplayProjectTitleConfig {
+    pub consist: TitleConsist,
+
+    #[serde(default = "DisplayProjectTitleConfig::default_id_before")]
+    pub id_before: Option<Cow<'static, str>>,
+
+    #[serde(default = "DisplayProjectTitleConfig::default_id_after")]
+    pub id_after: Option<Cow<'static, str>>,
+
+    pub name_before: Option<Cow<'static, str>>,
+
+    pub name_after: Option<Cow<'static, str>>,
+
+    #[serde(default = "DisplayProjectTitleConfig::default_id_and_name_before")]
+    pub id_and_name_before: Option<Cow<'static, str>>,
+
+    #[serde(default = "DisplayProjectTitleConfig::default_id_and_name_separator")]
+    pub id_and_name_separator: Option<Cow<'static, str>>,
+
+    pub id_and_name_after: Option<Cow<'static, str>>,
+}
+
+impl Default for DisplayProjectTitleConfig {
+    fn default() -> Self {
+        Self {
+            consist: Default::default(),
+            id_before: Self::default_id_before(),
+            id_after: Self::default_id_after(),
+            name_before: None,
+            name_after: None,
+            id_and_name_before: Self::default_id_and_name_before(),
+            id_and_name_separator: Self::default_id_and_name_separator(),
+            id_and_name_after: None,
+        }
+    }
+}
+
+impl DisplayProjectTitleConfig {
+    pub const fn default_id_before() -> Option<Cow<'static, str>> {
+        Some(Cow::Borrowed("["))
+    }
+
+    pub const fn default_id_after() -> Option<Cow<'static, str>> {
+        Some(Cow::Borrowed("]"))
+    }
+
+    pub const fn default_id_and_name_before() -> Option<Cow<'static, str>> {
+        Some(Cow::Borrowed("["))
+    }
+
+    pub const fn default_id_and_name_separator() -> Option<Cow<'static, str>> {
+        Some(Cow::Borrowed("] "))
+    }
+}
+
 #[derive(Debug, Default, Deserialize, Serialize)]
 #[serde(default)]
 pub struct DisplayProjectConfig {
-    pub title: Title,
+    pub title: DisplayProjectTitleConfig,
     pub max_steps: Option<usize>,
     pub show_substeps: bool,
     pub compact: bool,
