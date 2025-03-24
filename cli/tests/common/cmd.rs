@@ -6,11 +6,18 @@ use anyhow::{anyhow, Context};
 use regex::Regex;
 
 pub fn split_command_parts(command_line: &str) -> Vec<&str> {
-    static REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#""([^"]+)"|\S+"#).expect("regex must be correct"));
+    static REGEX: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r##"r?#"(?:.|\n)*"#|r?"(?:[^"]+)"|\S+"##).expect("regex must be correct"));
 
     REGEX
         .find_iter(command_line)
-        .map(|found| found.as_str().trim_matches('"'))
+        .map(|found| {
+            found
+                .as_str()
+                .trim_start_matches("r#\"")
+                .trim_matches('#')
+                .trim_matches('"')
+        })
         .collect()
 }
 
@@ -20,8 +27,8 @@ pub enum Cmd {
     Ls(PathBuf),
     Mkdir(Vec<PathBuf>),
     Rm(Vec<PathBuf>),
-    Cat(PathBuf),
     Echo(String, Option<PathBuf>),
+    Cat(PathBuf, Option<PathBuf>),
 }
 
 pub enum CmdResponse {
@@ -40,12 +47,13 @@ impl Cmd {
             ["ls", path] => Self::Ls(root_dir.join(path)),
             ["mkdir", pathes @ ..] => Self::Mkdir(pathes.iter().map(|path| root_dir.join(path)).collect()),
             ["rm", pathes @ ..] => Self::Rm(pathes.iter().map(|path| root_dir.join(path)).collect()),
-            ["cat", path] => Self::Cat(root_dir.join(path)),
             ["echo", text @ .., ">", path] => Self::Echo(
                 text.iter().map(|item| *item).collect::<Vec<_>>().join(" "),
                 Some(root_dir.join(path)),
             ),
             ["echo", text @ ..] => Self::Echo(text.iter().map(|item| *item).collect::<Vec<_>>().join(" "), None),
+            ["cat", from_path, ">", to_path] => Self::Cat(root_dir.join(from_path), Some(PathBuf::from(to_path))),
+            ["cat", path] => Self::Cat(root_dir.join(path), None),
             _ => return Err(parts),
         };
         Ok(cmd)
@@ -57,8 +65,8 @@ impl Cmd {
             Self::Ls(path) => ls(path),
             Self::Mkdir(pathes) => mkdir(pathes),
             Self::Rm(pathes) => rm(pathes),
-            Self::Cat(path) => cat(path),
             Self::Echo(text, path) => echo(text, path),
+            Self::Cat(from, to) => cat(from, to),
         }
     }
 }
@@ -105,11 +113,6 @@ fn rm(pathes: Vec<PathBuf>) -> anyhow::Result<CmdResponse> {
     Ok(CmdResponse::Success)
 }
 
-fn cat(path: PathBuf) -> anyhow::Result<CmdResponse> {
-    let content = fs::read_to_string(&path).with_context(|| format!("Failed to read file `{}`", path.display()))?;
-    Ok(CmdResponse::Output(content))
-}
-
 fn echo(text: String, path: Option<PathBuf>) -> anyhow::Result<CmdResponse> {
     if let Some(path) = path {
         fs::write(&path, text).with_context(|| format!("Failed to write file `{}`", path.display()))?;
@@ -117,4 +120,10 @@ fn echo(text: String, path: Option<PathBuf>) -> anyhow::Result<CmdResponse> {
     } else {
         Ok(CmdResponse::Output(text))
     }
+}
+
+fn cat(from_path: PathBuf, to_path: Option<PathBuf>) -> anyhow::Result<CmdResponse> {
+    let content =
+        fs::read_to_string(&from_path).with_context(|| format!("Failed to read file `{}`", from_path.display()))?;
+    echo(content, to_path)
 }

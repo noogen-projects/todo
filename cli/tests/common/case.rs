@@ -1,3 +1,4 @@
+use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::{fs, io, mem};
 
@@ -27,33 +28,93 @@ pub struct ExpectedOutput {
     pub source_line: Option<usize>,
 }
 
+enum Multiline {
+    ToEndString(&'static str, String),
+    WithLinesHasEnd(&'static str, String),
+}
+
+impl Deref for Multiline {
+    type Target = String;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::ToEndString(_, string) => string,
+            Self::WithLinesHasEnd(_, string) => string,
+        }
+    }
+}
+
+impl DerefMut for Multiline {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        match self {
+            Self::ToEndString(_, string) => string,
+            Self::WithLinesHasEnd(_, string) => string,
+        }
+    }
+}
+
+impl From<Multiline> for String {
+    fn from(value: Multiline) -> Self {
+        match value {
+            Multiline::ToEndString(_, string) => string,
+            Multiline::WithLinesHasEnd(_, string) => string,
+        }
+    }
+}
+
 impl TestCase {
     pub fn parse(source: impl AsRef<str>, source_path: Option<PathBuf>, source_line: Option<usize>) -> Self {
         let mut commands = Vec::new();
         let mut expected_output = String::new();
-        let mut multiline_command: Option<String> = None;
+        let mut multiline_command: Option<Multiline> = None;
 
         // Split into commands and expected output
-        for line in source.as_ref().lines() {
+        for mut line in source.as_ref().lines() {
             if let Some(mut command) = multiline_command.take() {
                 command.push('\n');
-                if line.ends_with('\\') {
-                    if line.len() > 1 {
-                        command.push_str(&line[..line.len() - 1]);
-                    }
-                    multiline_command = Some(command);
+
+                let is_last_line = match &command {
+                    Multiline::ToEndString(end, _) => line.contains(*end),
+                    Multiline::WithLinesHasEnd(end, _) => {
+                        if line.ends_with(*end) {
+                            if line.len() > 1 {
+                                line = &line[..line.len() - 1];
+                            } else {
+                                line = "";
+                            }
+                            false
+                        } else {
+                            true
+                        }
+                    },
+                };
+
+                command.push_str(line);
+                if is_last_line {
+                    commands.push(command.into());
                 } else {
-                    command.push_str(line);
-                    commands.push(command);
+                    multiline_command = Some(command);
                 }
                 continue;
             }
 
-            if line.starts_with("$ ") {
-                if line.ends_with('\\') {
-                    multiline_command = Some(line[2..line.len() - 1].to_string());
+            if line.starts_with("$") {
+                let mut line = line.trim_start_matches('$').trim_start().to_string();
+
+                let open_string_idx = line.rfind("#\"");
+                let close_string_idx = line.rfind("\"#");
+                if open_string_idx.is_some() && open_string_idx.map(|idx| idx + 1) >= close_string_idx {
+                    multiline_command = Some(Multiline::ToEndString("\"#", line));
                 } else {
-                    commands.push(line[2..].to_string());
+                    let mark_string_count = line.matches("\"").count();
+                    if mark_string_count % 2 == 1 {
+                        multiline_command = Some(Multiline::ToEndString("\"", line));
+                    } else if line.ends_with('\\') {
+                        line.pop();
+                        multiline_command = Some(Multiline::WithLinesHasEnd("\\", line));
+                    } else {
+                        commands.push(line);
+                    }
                 }
             } else if !commands.is_empty() {
                 expected_output.push_str(line);
@@ -62,7 +123,7 @@ impl TestCase {
         }
 
         if let Some(command) = multiline_command {
-            commands.push(command);
+            commands.push(command.into());
         }
 
         // Remove trailing newline
