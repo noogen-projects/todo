@@ -62,10 +62,12 @@ impl<ID: HashedId + Clone + Display> DisplayList<ID> for FsTracker<ID> {
         }
 
         if let TitleConsist::IdAndName = consist {
-            if let Some(separator) = &config.title.id_and_name_separator {
-                out!("{separator}");
+            if project.id().to_string() != project.name() {
+                if let Some(separator) = &config.title.id_and_name_separator {
+                    out!("{separator}");
+                }
+                out!("{}", project.name());
             }
-            out!("{}", project.name());
         }
 
         if let Some(after) = match consist {
