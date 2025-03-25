@@ -5,6 +5,7 @@ use std::{fs, io, mem};
 use anyhow::anyhow;
 use assert_cmd::Command;
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Parser, Tag, TagEnd};
+use todo_app::config::{DEFAULT_CONFIG_FILE_NAME, ROOT_CONFIG_ENV_KEY};
 
 use super::cmd::{Cmd, CmdResponse};
 
@@ -174,7 +175,11 @@ impl TestCase {
                             Command::cargo_bin(name)?
                         };
 
-                        let cmd_assert = cmd.args(args).current_dir(&root_dir).assert();
+                        let cmd_assert = cmd
+                            .env(ROOT_CONFIG_ENV_KEY, format!("./{DEFAULT_CONFIG_FILE_NAME}"))
+                            .args(args)
+                            .current_dir(&root_dir)
+                            .assert();
 
                         let stdout = String::from_utf8_lossy(&cmd_assert.get_output().stdout);
                         let stderr = String::from_utf8_lossy(&cmd_assert.get_output().stderr);

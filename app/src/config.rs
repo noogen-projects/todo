@@ -433,6 +433,7 @@ impl ConfigBuilder {
 }
 
 pub const DEFAULT_CONFIG_FILE_NAME: &str = "todo.toml";
+pub const ROOT_CONFIG_ENV_KEY: &str = "TODO_ROOT_CONFIG";
 
 #[derive(Debug)]
 pub struct ConfigLoader {
@@ -443,10 +444,12 @@ pub struct ConfigLoader {
 
 impl Default for ConfigLoader {
     fn default() -> Self {
-        let root_config_file = home::home_dir()
-            .unwrap_or_default()
-            .join(".todo")
-            .join(DEFAULT_CONFIG_FILE_NAME);
+        let root_config_file = env::var(ROOT_CONFIG_ENV_KEY).map(Into::into).unwrap_or_else(|_| {
+            home::home_dir()
+                .unwrap_or_default()
+                .join(".todo")
+                .join(DEFAULT_CONFIG_FILE_NAME)
+        });
 
         Self {
             config_file_name: DEFAULT_CONFIG_FILE_NAME.into(),
