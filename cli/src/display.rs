@@ -174,13 +174,17 @@ impl<ID: HashedId + Clone + Display> DisplayList<ID> for FsTracker<ID> {
 
         projects.sort_by(|(title_key1, ..), (title_key2, ..)| title_key1.cmp(title_key2));
 
+        let mut is_first_project = true;
         for (title_key, consist, project) in projects {
-            if !config.compact {
+            if !config.compact || (!is_first_project && config.separate_projects) {
                 outln!();
             }
+
             self.display_project_title(project, consist, Some(title_key), config);
             outln!();
             self.display_steps_list(project, config);
+
+            is_first_project = false;
         }
     }
 }

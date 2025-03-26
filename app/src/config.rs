@@ -220,6 +220,7 @@ pub struct DisplayProjectConfig {
     pub max_steps: Option<usize>,
     pub show_substeps: bool,
     pub compact: bool,
+    pub separate_projects: bool,
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
