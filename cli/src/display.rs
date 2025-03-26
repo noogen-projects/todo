@@ -135,11 +135,11 @@ impl<ID: HashedId + Clone + Display> DisplayList<ID> for FsTracker<ID> {
                     Step::Milestone(id) => {
                         if let Some(milestone) = plan.get_milestone(id) {
                             if !config.compact {
-                                display_line(0, "");
+                                outln!();
                             }
                             display_line(0, &format!("# {}", milestone.name));
                             if !config.compact {
-                                display_line(0, "");
+                                outln!();
                             }
                         }
                     },
