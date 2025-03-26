@@ -131,3 +131,38 @@ project A: 6
 project B: 1
 - task B-1
 ```
+
+## Prepare display id and name
+
+```sh
+$ echo r#"[display.project.title]
+consist = "id_and_name"
+id_before = "["
+id_after = "]"
+
+[display.project]
+max_steps = 2
+compact = true
+separate_projects = true
+"# > "todo.toml"
+```
+
+```sh
+$ echo r#"
+id = "project-a"
+name = "A"
+"# > "project A/Project.toml"
+```
+
+## List configured
+
+```sh
+$ todo list .
+[project B]: 1
+- task B-1
+
+[project-a] A: 6
+- To complete task 1
+- Some other task 2
+..4
+```
