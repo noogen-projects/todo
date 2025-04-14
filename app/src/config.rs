@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 use std::env;
-use std::env::VarError;
 use std::path::{Path, PathBuf};
 
 pub use config::ConfigError;
@@ -420,9 +419,9 @@ impl ConfigBuilder {
         }
 
         // Add in settings from the environment (with a prefix of TODO)
-        // Eg. `TODO__HTTP__PORT=8090 ` would set the `http.port` param
+        // Eg. `TODO_CONFIG_HTTP_PORT=8090 ` would set the `http.port` param
         let config = config_builder
-            .add_source(Environment::with_prefix("TODO_").separator("__"))
+            .add_source(Environment::with_prefix("TODO_CONFIG").separator("_"))
             .build()?;
         config.try_deserialize()
     }
@@ -490,15 +489,9 @@ impl ConfigLoader {
             root_config_file,
             config_file,
         } = self;
+
         let mut config_builder = ConfigBuilder::default();
 
-        let root_config_file = env::var("TODO__ROOT_CONFIG").map(PathBuf::from).or_else(|err| {
-            if let VarError::NotPresent = err {
-                Ok(root_config_file)
-            } else {
-                Err(err)
-            }
-        })?;
         if root_config_file.exists() {
             config_builder.add_path(&root_config_file);
         }
