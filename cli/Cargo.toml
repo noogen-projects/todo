@@ -9,8 +9,8 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = { workspace = true }
-clap = { version = "4.3", features = ["derive"] }
-either = "1.15.0"
+clap = { version = "4.5", features = ["derive"] }
+either = { workspace = true }
 indexmap = { workspace = true }
 todo-app = { path = "../app" }
 todo-lib = { path = "../lib" }
@@ -20,4 +20,4 @@ todo-tracker-fs = { path = "../tracker-fs" }
 assert_cmd = "2.0"
 pulldown-cmark = "0.13"
 regex = { workspace = true }
-temp_testdir = "0.2"
+temp_testdir = { workspace = true }

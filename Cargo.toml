@@ -13,7 +13,9 @@ lto = true
 
 [workspace.dependencies]
 anyhow = "1.0"
-indexmap = { version = "2.7", features = ["serde"] }
+either = "1.15"
+indexmap = { version = "2.9", features = ["serde"] }
 regex = "1.11"
 serde = { version = "1.0", features = ["derive"] }
+temp_testdir = "0.2"
 thiserror = "2.0"
