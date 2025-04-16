@@ -10,12 +10,22 @@ pub struct CliOpts {
     #[arg(short, long)]
     pub config_file: Option<PathBuf>,
 
-    /// Work in global mode
-    #[arg(short, long)]
-    pub global: bool,
+    #[command(flatten)]
+    pub working_mode: WorkingMode,
 
     #[command(subcommand)]
     pub command: Command,
+}
+
+#[derive(Parser, Clone, Copy, Debug)]
+pub struct WorkingMode {
+    /// Work in local mode
+    #[arg(short, long, conflicts_with = "global")]
+    pub local: bool,
+
+    /// Work in global mode
+    #[arg(short, long, conflicts_with = "local")]
+    pub global: bool,
 }
 
 #[derive(Subcommand)]
@@ -140,7 +150,7 @@ pub struct DisplayMode {
     pub pretty: bool,
 }
 
-#[derive(Parser, Clone)]
+#[derive(Parser, Clone, Debug)]
 pub struct ProjectLocation {
     /// Project location (path, id or name)
     #[arg(short, long, conflicts_with_all = &["project_path", "project_id", "project_name"])]

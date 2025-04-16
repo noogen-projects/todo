@@ -168,6 +168,27 @@ impl<ID: SerializedId> FsProjectConfig<ID> {
     }
 }
 
+pub fn find_project<ID>(
+    project_root: impl AsRef<Path>,
+    get_project_config_placement: impl Fn(&Path) -> Option<Placement<PathBuf>>,
+) -> Option<FsProjectConfig<ID>>
+where
+    ID: DeserializedId + Ord + Clone,
+{
+    if let Some(project_config_placement) = get_project_config_placement(project_root.as_ref()) {
+        let root_dir = project_config_placement.as_ref().parent();
+        if let Ok(mut project_config) = FsProjectConfig::<ID>::load(&project_config_placement) {
+            if project_config.root_dir.is_none() {
+                project_config.root_dir = root_dir.map(ToOwned::to_owned);
+            }
+
+            return Some(project_config);
+        }
+    }
+
+    None
+}
+
 struct Parent<ID> {
     id: ID,
     root_dir: PathBuf,
@@ -197,26 +218,19 @@ where
                 }
             };
 
-            if let Some(project_config_placement) = get_project_config_placement(path) {
-                let root_dir = project_config_placement.as_ref().parent();
-                if let Ok(mut project_config) = FsProjectConfig::<ID>::load(&project_config_placement) {
-                    if project_config.root_dir.is_none() {
-                        project_config.root_dir = root_dir.map(ToOwned::to_owned);
+            if let Some(project_config) = find_project::<ID>(path, &get_project_config_placement) {
+                if let Some(parent) = parent {
+                    if let Some(parent_project_config) = projects.get_mut(&parent.id) {
+                        parent_project_config.subprojects.insert(project_config.id.clone());
                     }
-
-                    if let Some(parent) = parent {
-                        if let Some(parent_project_config) = projects.get_mut(&parent.id) {
-                            parent_project_config.subprojects.insert(project_config.id.clone());
-                        }
-                        parents.push(parent);
-                    }
-
-                    parent = Some(Parent {
-                        id: project_config.id.clone(),
-                        root_dir: project_config.root_dir.clone().unwrap_or_default(),
-                    });
-                    projects.insert(project_config.id.clone(), project_config);
+                    parents.push(parent);
                 }
+
+                parent = Some(Parent {
+                    id: project_config.id.clone(),
+                    root_dir: project_config.root_dir.clone().unwrap_or_default(),
+                });
+                projects.insert(project_config.id.clone(), project_config);
             }
 
             if let Some(parent) = parent {

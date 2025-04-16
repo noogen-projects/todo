@@ -11,14 +11,18 @@ mod opts;
 fn main() -> anyhow::Result<()> {
     let CliOpts {
         config_file,
-        global,
+        working_mode,
         command,
     } = CliOpts::parse();
 
-    let profile = ConfigLoader::default()
+    let mut profile = ConfigLoader::default()
         .maybe_with_config_file(config_file)
         .load()
         .expect("Wrong config structure");
+
+    profile
+        .config
+        .update_working_mode(working_mode.local, working_mode.global);
 
     match command {
         Command::New(NewProject {
@@ -46,15 +50,10 @@ fn main() -> anyhow::Result<()> {
             location,
             project_location,
         }) => {
-            let mut config = profile.config;
-            if let Some(max_steps) = max_steps {
-                config.display.project.max_steps = Some(max_steps);
-            }
-            if display.compact || display.pretty {
-                config.display.project.compact = display.compact && !display.pretty;
-            }
-
-            command::list(location, project_location, global, &config)?;
+            profile
+                .config
+                .update_display_project(display.compact, display.pretty, max_steps);
+            command::list(location, project_location, &profile.config)?;
         },
         _ => {},
     }

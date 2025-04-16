@@ -7,31 +7,20 @@ use todo_tracker_fs::config::{DeserializedId, FsProjectConfig};
 use todo_tracker_fs::Placement;
 
 use crate::config::SourceConfig;
-use crate::target::{Location, Target, TrackerType};
+use crate::target::Location;
 
 pub enum ProjectData<ID: HashedId = String> {
     Fs(FsProjectMetadata<ID>),
 }
 
-impl<ID: HashedId + ToString> TryFrom<Target<ID>> for ProjectData<ID> {
-    type Error = anyhow::Error;
-
-    fn try_from(target: Target<ID>) -> Result<Self, Self::Error> {
-        let location = target.location;
-        match target.tracker {
-            TrackerType::Fs => Ok(ProjectData::Fs(FsProjectMetadata::try_from(location)?)),
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct FsProjectMetadata<ID: HashedId> {
-    pub id: Option<ID>,
-    pub name: String,
-    pub root_dir: PathBuf,
-    pub is_current_dir_parent: bool,
-    pub config_placement: Option<Placement<PathBuf>>,
-    pub config: Option<FsProjectConfig<ID>>,
+    id: Option<ID>,
+    name: String,
+    root_dir: PathBuf,
+    is_current_dir_parent: bool,
+    config_placement: Option<Placement<PathBuf>>,
+    config: Option<FsProjectConfig<ID>>,
 }
 
 impl<ID: HashedId> Default for FsProjectMetadata<ID> {
@@ -47,81 +36,7 @@ impl<ID: HashedId> Default for FsProjectMetadata<ID> {
     }
 }
 
-impl<ID: HashedId + Default> FsProjectMetadata<ID> {
-    pub fn into_config(self) -> (FsProjectConfig<ID>, Option<Placement<PathBuf>>) {
-        let FsProjectMetadata {
-            id,
-            name,
-            root_dir,
-            is_current_dir_parent: _,
-            config_placement,
-            config,
-        } = self;
-        let mut config = config.unwrap_or_else(|| FsProjectConfig::new(id.unwrap_or_default()));
-
-        if config.name.is_none() {
-            config.name = Some(name)
-        }
-
-        if config.root_dir.is_none() {
-            config.root_dir = Some(root_dir)
-        }
-
-        (config, config_placement)
-    }
-}
-
-impl<ID: HashedId + ToString> FsProjectMetadata<ID> {
-    pub fn from_location(location: Location<ID>) -> anyhow::Result<Self> {
-        Ok(match location {
-            Location::Path(path) => Self::default()
-                .with_name_from_path(&path)
-                .ok_or_else(|| anyhow!("path `{}` is not containing a directory name", path.display()))?
-                .with_root_dir_from_path(path)?,
-            Location::Id(id) => {
-                let name = id.to_string();
-
-                Self::default()
-                    .with_id(id)
-                    .with_root_dir_from_path(&name)?
-                    .with_name(name)
-            },
-            Location::Name(name) => Self::default().with_root_dir_from_path(&name)?.with_name(name),
-        })
-    }
-
-    pub fn new(location: Location<ID>, config: &SourceConfig, use_manifest: bool) -> anyhow::Result<Self> {
-        let mut data = Self::from_location(location)?;
-
-        if use_manifest {
-            let file_name = config.project_manifest_file_name(&data.name);
-
-            data.config_placement
-                .replace(Placement::CodeBlockInFile(data.root_dir.join(file_name)));
-        } else {
-            data.config_placement
-                .replace(Placement::WholeFile(data.root_dir.join(&config.project_config_file)));
-        }
-
-        Ok(data)
-    }
-
-    pub fn exists(location: Location<ID>, config: &SourceConfig) -> anyhow::Result<Self> {
-        let mut data = Self::from_location(location)?;
-        if data.set_config_placement_if_exist(config) {
-            Ok(data)
-        } else {
-            Err(anyhow!(
-                "could not find `{}` or `{}` in `{}` directory",
-                config.project_config_file.display(),
-                config
-                    .manifest_filename_example
-                    .replace(config.manifest_example_project_name(), "*"),
-                data.root_dir.display()
-            ))
-        }
-    }
-
+impl<ID: HashedId> FsProjectMetadata<ID> {
     pub fn with_id(mut self, id: ID) -> Self {
         self.id = Some(id);
         self
@@ -160,9 +75,131 @@ impl<ID: HashedId + ToString> FsProjectMetadata<ID> {
         Ok(self)
     }
 
+    pub fn with_config_placement(mut self, placement: Placement<PathBuf>) -> Self {
+        self.config_placement = Some(placement);
+        self
+    }
+
+    pub fn with_config_placement_maybe(mut self, placement: Option<Placement<PathBuf>>) -> Self {
+        self.config_placement = placement;
+        self
+    }
+
+    pub fn with_config(mut self, config: FsProjectConfig<ID>) -> Self {
+        self.config = Some(config);
+        self
+    }
+
+    pub fn id(&self) -> Option<&ID> {
+        self.config.as_ref().map(|config| &config.id).or(self.id.as_ref())
+    }
+
+    pub fn name(&self) -> &str {
+        self.config
+            .as_ref()
+            .and_then(|config| config.name.as_deref())
+            .unwrap_or(&self.name)
+    }
+
+    pub fn root_dir(&self) -> &Path {
+        self.config
+            .as_ref()
+            .and_then(|config| config.root_dir.as_deref())
+            .unwrap_or(&self.root_dir)
+    }
+
+    pub fn is_current_dir_parent(&self) -> bool {
+        self.is_current_dir_parent
+    }
+
     pub fn set_config_placement_if_exist(&mut self, config: &SourceConfig) -> bool {
         self.config_placement = config.find_project_config_placement(&self.root_dir, Some(&self.name));
         self.config_placement.is_some()
+    }
+
+    #[allow(clippy::type_complexity)]
+    pub fn destructure(
+        self,
+    ) -> (
+        Option<ID>,
+        String,
+        PathBuf,
+        bool,
+        Option<Placement<PathBuf>>,
+        Option<FsProjectConfig<ID>>,
+    ) {
+        let Self {
+            id,
+            name,
+            root_dir,
+            is_current_dir_parent,
+            config_placement,
+            config,
+        } = self;
+        (id, name, root_dir, is_current_dir_parent, config_placement, config)
+    }
+}
+
+impl<ID: HashedId + Default> FsProjectMetadata<ID> {
+    pub fn into_config(self) -> (FsProjectConfig<ID>, Option<Placement<PathBuf>>) {
+        let Self {
+            id,
+            name,
+            root_dir,
+            is_current_dir_parent: _,
+            config_placement,
+            config,
+        } = self;
+        let mut config = config.unwrap_or_else(|| FsProjectConfig::new(id.unwrap_or_default()));
+
+        if config.name.is_none() {
+            config.name = Some(name)
+        }
+
+        if config.root_dir.is_none() {
+            config.root_dir = Some(root_dir)
+        }
+
+        (config, config_placement)
+    }
+}
+
+impl<ID: HashedId + ToString> FsProjectMetadata<ID> {
+    pub fn from_location(location: Location<ID>) -> anyhow::Result<Self> {
+        Ok(match location {
+            Location::Path(path) => Self::default()
+                .with_name_from_path(&path)
+                .ok_or_else(|| anyhow!("path `{}` is not containing a directory name", path.display()))?
+                .with_root_dir_from_path(path)?,
+            Location::Id(id) => {
+                let name = id.to_string();
+
+                Self::default()
+                    .with_id(id)
+                    .with_root_dir_from_path(&name)?
+                    .with_name(name)
+            },
+            Location::Name(name) => Self::default().with_root_dir_from_path(&name)?.with_name(name),
+            Location::IdOrName(id_or_name) => Self::default()
+                .with_root_dir_from_path(&id_or_name)?
+                .with_name(id_or_name),
+        })
+    }
+
+    pub fn new(location: Location<ID>, config: &SourceConfig, use_manifest: bool) -> anyhow::Result<Self> {
+        let mut data = Self::from_location(location)?;
+
+        if use_manifest {
+            let file_name = config.project_manifest_file_name(&data.name);
+
+            data.config_placement
+                .replace(Placement::CodeBlockInFile(data.root_dir.join(file_name)));
+        } else {
+            data.config_placement
+                .replace(Placement::WholeFile(data.root_dir.join(&config.project_config_file)));
+        }
+
+        Ok(data)
     }
 }
 
@@ -182,13 +219,5 @@ impl<ID: DeserializedId + Clone> FsProjectMetadata<ID> {
         }
 
         Ok(())
-    }
-}
-
-impl<ID: HashedId + ToString> TryFrom<Location<ID>> for FsProjectMetadata<ID> {
-    type Error = anyhow::Error;
-
-    fn try_from(location: Location<ID>) -> Result<Self, Self::Error> {
-        Self::from_location(location)
     }
 }

@@ -44,6 +44,24 @@ List steps of 4 projects
 
 ```sh
 $ todo list "project A"
+List steps of 3 projects
+
+[project A]: 0
+
+[project A/project C]: 0
+
+[project A/project D]: 0
+```
+
+```sh
+$ todo list --project "project A"
+List steps of 1 project
+
+[project A]: 0
+```
+
+```sh
+$ todo list --project "./project A"
 List steps of 1 project
 
 [project A]: 0
@@ -52,6 +70,14 @@ List steps of 1 project
 ```sh
 $ cd "project A"
 $ todo list
+List steps of 1 project
+
+[project A]: 0
+```
+
+```sh
+$ cd "project A"
+$ todo list .
 List steps of 3 projects
 
 [project A]: 0
@@ -93,6 +119,18 @@ List steps of 4 projects
 
 ```sh
 $ todo list "project A"
+List steps of 3 projects
+
+[project A]: 1
+- task 1
+
+[project A/project C]: 0
+
+[project A/project D]: 0
+```
+
+```sh
+$ todo list --project "project A"
 List steps of 1 project
 
 [project A]: 1
@@ -102,6 +140,15 @@ List steps of 1 project
 ```sh
 $ cd "project A"
 $ todo list
+List steps of 1 project
+
+[project A]: 1
+- task 1
+```
+
+```sh
+$ cd "project A"
+$ todo list .
 List steps of 3 projects
 
 [project A]: 1
@@ -144,16 +191,6 @@ List steps of 4 projects
 
 ```sh
 $ todo list "project A"
-List steps of 1 project
-
-[project A]: 2
-- task 1
-- task 2
-```
-
-```sh
-$ cd "project A"
-$ todo list
 List steps of 3 projects
 
 [project A]: 2
@@ -164,6 +201,16 @@ List steps of 3 projects
 - task 1
 
 [project A/project D]: 0
+```
+
+```sh
+$ cd "project A"
+$ todo list
+List steps of 1 project
+
+[project A]: 2
+- task 1
+- task 2
 ```
 
 ```sh
@@ -214,17 +261,6 @@ List steps of 4 projects
 
 ```sh
 $ todo list "project A"
-List steps of 1 project
-
-[project A]: 3
-- task 1
-- task 2
-- task 3
-```
-
-```sh
-$ cd "project A"
-$ todo list
 List steps of 3 projects
 
 [project A]: 3
@@ -241,6 +277,16 @@ List steps of 3 projects
 ```
 
 ```sh
+$ todo list --project "project A"
+List steps of 1 project
+
+[project A]: 3
+- task 1
+- task 2
+- task 3
+```
+
+```sh
 $ cd "project A/project C"
 $ todo list
 List steps of 1 project
@@ -251,8 +297,7 @@ List steps of 1 project
 ```
 
 ```sh
-$ cd "project A/project D"
-$ todo list
+$ todo list --project "project D"
 List steps of 1 project
 
 [project D]: 1
@@ -293,8 +338,7 @@ List steps of 4 projects
 ```
 
 ```sh
-$ cd "project B"
-$ todo list
+$ todo list --project "project B"
 List steps of 1 project
 
 [project B]: 2

@@ -505,3 +505,72 @@ name = "project D"
 - task 4
 ```
 ````
+
+## Add issue to located project
+
+```sh
+$ todo add --project-id "project C" "task 5"
+    Adding `task 5` issue to `project C` project
+```
+
+```sh
+$ cat "project A/project C/TODO.md"
+- task 3
+- task 1
+- task 2
+- task 4
+- task 5
+```
+
+```sh
+$ todo add --project-name "project C" "task 6"
+    Adding `task 6` issue to `project C` project
+```
+
+```sh
+$ cat "project A/project C/TODO.md"
+- task 3
+- task 1
+- task 2
+- task 4
+- task 5
+- task 6
+```
+
+```sh
+$ todo add --project-path "project A/project C" "task 7"
+    Adding `task 7` issue to `project C` project
+```
+
+```sh
+$ cat "project A/project C/TODO.md"
+- task 3
+- task 1
+- task 2
+- task 4
+- task 5
+- task 6
+- task 7
+```
+
+```sh
+$ todo add --project "project D" "task 5"
+    Adding `task 5` issue to `project D` project
+```
+
+````sh
+$ cat "project A/project D/project D.manifest.md"
+# project D
+
+```toml project
+id = "project D"
+name = "project D"
+```
+```md todo
+- task 3
+- task 1
+- task 2
+- task 4
+- task 5
+```
+````

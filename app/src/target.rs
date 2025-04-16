@@ -17,6 +17,7 @@ pub enum Location<ID = String> {
     Path(PathBuf),
     Id(ID),
     Name(String),
+    IdOrName(String),
 }
 
 impl<ID> Location<ID> {
@@ -25,7 +26,7 @@ impl<ID> Location<ID> {
         if location == "." || location == ".." || location.chars().any(path::is_separator) {
             Self::Path(PathBuf::from(location))
         } else {
-            Self::Name(location)
+            Self::IdOrName(location)
         }
     }
 }
