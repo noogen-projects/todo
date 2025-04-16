@@ -181,8 +181,8 @@ impl TestCase {
                             .current_dir(&root_dir)
                             .assert();
 
-                        let stdout = String::from_utf8_lossy(&cmd_assert.get_output().stdout);
-                        let stderr = String::from_utf8_lossy(&cmd_assert.get_output().stderr);
+                        let stdout = separate_logs(&String::from_utf8_lossy(&cmd_assert.get_output().stdout));
+                        let stderr = separate_logs(&String::from_utf8_lossy(&cmd_assert.get_output().stderr));
                         let full_output = format!("{}{}", stdout, stderr);
 
                         self.assert_command_output(&root_dir, command, full_output);
@@ -290,4 +290,24 @@ pub fn parse_tests_from_markdown(
     }
 
     Ok(sections)
+}
+
+fn separate_logs(source: &str) -> String {
+    let mut outputs = source
+        .lines()
+        .filter_map(|line| {
+            if line.trim().starts_with("[log]") {
+                println!("{line}");
+                None
+            } else {
+                Some(line)
+            }
+        })
+        .collect::<Vec<_>>();
+
+    if source.ends_with('\n') {
+        outputs.push("");
+    }
+
+    outputs.join("\n")
 }
