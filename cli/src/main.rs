@@ -1,8 +1,7 @@
 use clap::Parser;
-use opts::{AddIssue, InitProject, List, NewProject};
 use todo_app::config::{ConfigLoader, SourceConfig};
 
-use crate::opts::{CliOpts, Command};
+use crate::opts::{AddIssue, CliOpts, Command, InitProject, List, NewProject, Tree};
 
 mod command;
 mod display;
@@ -55,7 +54,17 @@ fn main() -> anyhow::Result<()> {
                 .update_display_project(display.compact, display.pretty, max_steps);
             command::list(location, project_location, &profile.config)?;
         },
-        _ => {},
+        Command::Tree(Tree {
+            max_steps,
+            display,
+            location,
+            project_location,
+        }) => {
+            profile
+                .config
+                .update_display_project(display.compact, display.pretty, max_steps);
+            command::tree(location, project_location, &profile.config)?;
+        },
     }
 
     Ok(())

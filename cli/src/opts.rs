@@ -38,23 +38,7 @@ pub enum Command {
 
     List(List),
 
-    #[command(subcommand)]
-    Issue(Cmd),
-
-    #[command(subcommand)]
-    Project(Cmd),
-}
-
-#[derive(Subcommand, Clone)]
-pub enum Cmd {
-    Info {
-        #[arg(short, long)]
-        project: Option<String>,
-    },
-    List {
-        #[arg(short, long)]
-        project: Option<String>,
-    },
+    Tree(Tree),
 }
 
 #[derive(Parser, Clone)]
@@ -101,7 +85,7 @@ pub struct AddIssue {
 
 #[derive(Parser, Clone)]
 pub struct List {
-    /// Maximum number of steps in list (issues and milestones)
+    /// Maximum number of steps in the list (project issues and milestones)
     #[arg(short = 's', long)]
     pub max_steps: Option<usize>,
 
@@ -111,7 +95,24 @@ pub struct List {
     /// Listing root location (exists directory path by example, current directory by default)
     pub location: Option<String>,
 
-    /// The location of the project to list steps
+    /// The location of the project to show its list of steps
+    #[command(flatten)]
+    pub project_location: ProjectLocation,
+}
+
+#[derive(Parser, Clone)]
+pub struct Tree {
+    /// Maximum number of steps in the tree (project issues and milestones)
+    #[arg(short = 's', long)]
+    pub max_steps: Option<usize>,
+
+    #[command(flatten)]
+    pub display: DisplayMode,
+
+    /// Tree from root location (exists directory path by example, current directory by default)
+    pub location: Option<String>,
+
+    /// The location of the project to show its tree
     #[command(flatten)]
     pub project_location: ProjectLocation,
 }

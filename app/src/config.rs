@@ -176,6 +176,9 @@ pub struct DisplayProjectTitleConfig {
     pub id_and_name_separator: Option<Cow<'static, str>>,
 
     pub id_and_name_after: Option<Cow<'static, str>>,
+
+    #[serde(default = "DisplayProjectTitleConfig::default_show_steps_count")]
+    pub show_steps_count: bool,
 }
 
 impl Default for DisplayProjectTitleConfig {
@@ -189,6 +192,7 @@ impl Default for DisplayProjectTitleConfig {
             id_and_name_before: None,
             id_and_name_separator: Self::default_id_and_name_separator(),
             id_and_name_after: None,
+            show_steps_count: Self::default_show_steps_count(),
         }
     }
 }
@@ -204,6 +208,10 @@ impl DisplayProjectTitleConfig {
 
     pub const fn default_id_and_name_separator() -> Option<Cow<'static, str>> {
         Some(Cow::Borrowed(" "))
+    }
+
+    pub const fn default_show_steps_count() -> bool {
+        true
     }
 }
 

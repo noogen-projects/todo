@@ -97,23 +97,52 @@ pub fn add_issue(
 
 pub fn list(root: Option<String>, project_location: ProjectLocation, config: &Config) -> anyhow::Result<()> {
     let mut location = project_location.into_location();
+    let search_roots = local_search_roots(root.as_deref(), Some(&mut location), config)?;
 
-    let local_search_roots = if let Some(root) = &root {
-        vec![PathBuf::from(root)]
-    } else if config.working_mode.is_local() {
-        let current_dir = env::current_dir()?;
-
-        if location.is_none() {
-            let project_root = project::default_path(&current_dir, &config.source)?;
-            location = Some(Location::Path(project_root));
-        }
-        vec![current_dir]
-    } else {
-        vec![]
-    };
-
-    let tracker = open_tracker(location, local_search_roots, config)?;
+    let tracker = open_tracker(location, search_roots, config)?;
     tracker.display_projects_list(&config.display.project);
 
     Ok(())
+}
+
+pub fn tree(root: Option<String>, project_location: ProjectLocation, config: &Config) -> anyhow::Result<()> {
+    let location = project_location.into_location();
+    let search_roots = local_search_roots::<String>(root.as_deref(), None, config)?;
+
+    let tracker = open_tracker(location, search_roots, config)?;
+    tracker.display_projects_tree(&config.display.project);
+
+    Ok(())
+}
+
+fn local_search_roots<ID>(
+    root: Option<&str>,
+    location: Option<&mut Option<Location<ID>>>,
+    config: &Config,
+) -> anyhow::Result<Vec<PathBuf>> {
+    let mut search_roots = Vec::new();
+
+    if let Some(root) = root {
+        search_roots.push(PathBuf::from(root));
+    } else if config.working_mode.is_local() {
+        let current_dir = env::current_dir()?;
+
+        let project_root = if location.as_ref().map(|location| location.is_none()).unwrap_or(true) {
+            Some(project::default_path(&current_dir, &config.source)?)
+        } else {
+            None
+        };
+
+        if let Some(location) = location {
+            if let Some(project_root) = project_root {
+                *location = Some(Location::Path(project_root));
+            }
+
+            search_roots.push(current_dir);
+        } else if let Some(project_root) = project_root {
+            search_roots.push(project_root);
+        }
+    }
+
+    Ok(search_roots)
 }
