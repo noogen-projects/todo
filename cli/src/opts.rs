@@ -30,14 +30,19 @@ pub struct WorkingMode {
 
 #[derive(Subcommand)]
 pub enum Command {
+    /// Create new project
     New(NewProject),
 
+    /// Initialize project
     Init(InitProject),
 
+    /// Add issue
     Add(AddIssue),
 
+    /// List issues
     List(List),
 
+    /// Display projects tree
     Tree(Tree),
 }
 
