@@ -68,7 +68,7 @@ List steps of 1 project
 
 ### Examples
 
-For more advanced usage, including the `tree` command and using subprojects, see examples in `.md`-files in the `./cli/tests/`.
+For more advanced usage, including the `tree` command and using subprojects, see examples in `.md`-files in the [`./cli/tests/`](./cli/tests/) directory.
 
 ## Data Storage
 
