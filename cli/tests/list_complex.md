@@ -88,6 +88,31 @@ args:
 ## List steps from complex file
 
 ```sh
+$ todo list .
+List steps of 2 projects
+
+[project A]: 6
+- To complete task 1
+- Some other task 2
+
+# Milestone A
+
+- Some other task 3
+- Some other task 4
+- final task
+
+[project B]: 6
+- To complete task 1
+- Some other task 2
+
+# Milestone A
+
+- Some other task 3
+- Some other task 4
+- final task
+```
+
+```sh
 $ cd "project A"
 $ todo list
 List steps of 1 project

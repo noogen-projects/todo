@@ -30,7 +30,13 @@ pub trait DisplayList<ID> {
         title_key: Option<impl AsRef<str>>,
         config: &DisplayProjectConfig,
     );
-    fn display_steps_list(&self, prefix: impl AsRef<str>, project: &Project<ID>, config: &DisplayProjectConfig);
+    fn display_steps_list(
+        &self,
+        prefix: impl AsRef<str>,
+        indent: impl AsRef<str>,
+        project: &Project<ID>,
+        config: &DisplayProjectConfig,
+    );
     fn display_projects_list(&self, config: &DisplayProjectConfig);
     fn display_projects_tree(&self, config: &DisplayProjectConfig);
 }
@@ -111,8 +117,15 @@ impl<ID: HashedId + Clone + Display> DisplayList<ID> for FsTracker<ID> {
         }
     }
 
-    fn display_steps_list(&self, prefix: impl AsRef<str>, project: &Project<ID>, config: &DisplayProjectConfig) {
+    fn display_steps_list(
+        &self,
+        prefix: impl AsRef<str>,
+        indent: impl AsRef<str>,
+        project: &Project<ID>,
+        config: &DisplayProjectConfig,
+    ) {
         let prefix = prefix.as_ref();
+        let indent = indent.as_ref();
         let max_count = config.max_steps.unwrap_or(usize::MAX);
 
         if let Some(plan) = self.project_plan(project.id()) {
@@ -121,11 +134,13 @@ impl<ID: HashedId + Clone + Display> DisplayList<ID> for FsTracker<ID> {
             let mut step_count = 0;
             let mut display_line = |level, text: &str| {
                 if step_count < max_count {
-                    outln!("{prefix}{:1$}{text}", "", level * 2);
+                    outln!("{prefix}{indent}{:1$}{text}", "", level * 2);
                 }
                 step_count += 1;
+                step_count < max_count
             };
 
+            let mut is_next_displayed = max_count > 0;
             for step in plan.steps() {
                 match step {
                     Step::Issue(id) => {
@@ -138,30 +153,31 @@ impl<ID: HashedId + Clone + Display> DisplayList<ID> for FsTracker<ID> {
                                         }
                                     }
 
-                                    display_line(parent_ids.len() + 1, &format!("- {}", issue.name));
+                                    is_next_displayed =
+                                        display_line(parent_ids.len() + 1, &format!("- {}", issue.name));
                                     parent_ids.push(issue.id);
                                 }
                             } else {
-                                display_line(0, &format!("- {}", issue.name));
+                                is_next_displayed = display_line(0, &format!("- {}", issue.name));
                                 parent_ids.clear();
                             }
                         }
                     },
                     Step::Milestone(id) => {
                         if let Some(milestone) = plan.get_milestone(id) {
-                            if !config.compact {
-                                outln!();
+                            if !config.compact && is_next_displayed {
+                                outln!("{prefix}");
                             }
-                            display_line(0, &format!("# {}", milestone.name));
-                            if !config.compact {
-                                outln!();
+                            is_next_displayed = display_line(0, &format!("# {}", milestone.name));
+                            if !config.compact && is_next_displayed {
+                                outln!("{prefix}");
                             }
                         }
                     },
                 }
             }
             if step_count > max_count {
-                outln!("..{}", step_count - max_count);
+                outln!("{prefix}{indent}..{}", step_count - max_count);
             }
         }
     }
@@ -197,7 +213,7 @@ impl<ID: HashedId + Clone + Display> DisplayList<ID> for FsTracker<ID> {
 
             self.display_project_title(project, consist, Some(title_key), config);
             outln!();
-            self.display_steps_list("", project, config);
+            self.display_steps_list("", "", project, config);
 
             is_first_project = false;
         }
@@ -254,7 +270,6 @@ fn format_project_title_key_inner<ID>(
 fn display_nested_projecs<'a, ID>(
     tracker: &FsTracker<ID>,
     project_ids: impl IntoIterator<Item = &'a ID>,
-    // projects: impl Iterator<Item = &'a Project<ID>>,
     subprojects: &IndexMap<ID, IndexSet<ID>>,
     config: &DisplayProjectConfig,
     prefix: impl AsRef<str>,
@@ -301,7 +316,7 @@ fn display_nested_projecs<'a, ID>(
         outln!();
 
         let children = subprojects.get(project.id());
-        let indent = if children.is_some() {
+        let child_prefix = if children.is_some() {
             "  │"
         } else if !prefix.is_empty() {
             "  "
@@ -311,11 +326,11 @@ fn display_nested_projecs<'a, ID>(
         let steps_prefix = if is_last_project {
             let trim_prefix = prefix.trim_end_matches("│");
             let space = if trim_prefix.len() < prefix.len() { " " } else { "" };
-            format!("{trim_prefix}{space}{indent}  ")
+            format!("{trim_prefix}{space}{child_prefix}")
         } else {
-            format!("{prefix}{indent}  ")
+            format!("{prefix}{child_prefix}")
         };
-        tracker.display_steps_list(steps_prefix, project, config);
+        tracker.display_steps_list(steps_prefix, "  ", project, config);
 
         if let Some(children) = children {
             display_nested_projecs(tracker, children, subprojects, config, format!("{prefix}  │"));

@@ -189,6 +189,7 @@ where
     None
 }
 
+#[derive(Debug)]
 struct Parent<ID> {
     id: ID,
     root_dir: PathBuf,
@@ -205,7 +206,11 @@ where
     let mut parents: Vec<Parent<ID>> = Vec::new();
 
     for root in search_roots {
-        for entry in WalkDir::new(root).follow_links(true).into_iter().filter_map(Result::ok) {
+        for entry in WalkDir::new(root)
+            .follow_links(true)
+            .into_iter()
+            .filter_map(|entry| entry.ok().and_then(|entry| entry.file_type().is_dir().then_some(entry)))
+        {
             let path = entry.path();
 
             let mut parent = loop {
