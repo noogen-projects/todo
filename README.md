@@ -8,7 +8,7 @@ A minimalist, universal and locally-oriented task manager.
 - Add issue to the project
 - List issues of the projects
 - View tree of the projects
-- Use local file-based projects and issue storage
+- Use local file-based project config and issue storage
 - Search for projects in the current directory and in configured search roots
 
 ## Installation
@@ -19,7 +19,7 @@ Make sure you have Rust installed:
 rustc --version
 ```
 
-Install the CLI-utility using `cargo`:
+Install the CLI-application using `cargo`:
 
 ```bash
 cargo install --git https://github.com/noogen-projects/todo
@@ -72,7 +72,7 @@ For more advanced usage, including the `tree` command and using subprojects, see
 
 ## Data Storage
 
-Currently, `todo` supports only a simple file system project storage. Projects are stored in a directory with a `Project.toml` file or a `*.manifest.md` file. Issues are stored in the manifest file or in the `TODO.md` file in the project root directory.
+Currently, `todo` supports only a simple file system storage. Projects are stored in a directory with a `Project.toml` file or a `*.manifest.md` file. Issues are stored in the manifest file or in the `TODO.md` file in the project root directory.
 
 ## License
 
