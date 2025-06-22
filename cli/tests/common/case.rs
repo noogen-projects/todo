@@ -214,8 +214,17 @@ impl TestCase {
             .unwrap_or_default();
         let source_line = self.output.source_line.unwrap_or_default();
 
+        // On macOS, temporary directories may appear with a `/private` prefix,
+        // e.g., `/private/var/folders/...`, which causes mismatch with expected output
+        // defined as `/var/folders/...`. To ensure cross-platform consistency,
+        // we normalize such paths in test output comparison.
+        let normalize_path = |s: &str| s.replace("/private/var/", "/var/");
+
+        let normalized_output = normalize_path(output);
+        let normalized_expected = normalize_path(&expected_output);
+
         assert_eq!(
-            output, expected_output,
+            normalized_output, normalized_expected,
             "Command `{command}` in source {source_path}:{source_line}"
         );
     }
