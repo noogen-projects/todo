@@ -1,5 +1,5 @@
 use clap::Parser;
-use todo_app::config::{ConfigLoader, SourceConfig};
+use todo_app::config::{Config, SourceConfig};
 
 use crate::opts::{AddIssue, CliOpts, Command, InitProject, List, NewProject, Tree};
 
@@ -14,14 +14,8 @@ fn main() -> anyhow::Result<()> {
         command,
     } = CliOpts::parse();
 
-    let mut profile = ConfigLoader::default()
-        .maybe_with_config_file(config_file)
-        .load()
-        .expect("Wrong config structure");
-
-    profile
-        .config
-        .update_working_mode(working_mode.local, working_mode.global);
+    let mut config = Config::load(config_file)?;
+    config.update_working_mode(working_mode.local, working_mode.global);
 
     match command {
         Command::New(NewProject {
@@ -29,19 +23,19 @@ fn main() -> anyhow::Result<()> {
             with_project_config,
             location,
         }) => {
-            let use_manifest = use_manifest(with_manifest, with_project_config, &profile.config.source);
-            command::new_project(use_manifest, location, &profile.config)?;
+            let use_manifest = use_manifest(with_manifest, with_project_config, &config.source);
+            command::new_project(use_manifest, location, &config)?;
         },
         Command::Init(InitProject {
             with_manifest,
             with_project_config,
             location,
         }) => {
-            let use_manifest = use_manifest(with_manifest, with_project_config, &profile.config.source);
-            command::init_project(use_manifest, location, &profile.config)?;
+            let use_manifest = use_manifest(with_manifest, with_project_config, &config.source);
+            command::init_project(use_manifest, location, &config)?;
         },
         Command::Add(AddIssue { location, order, issue }) => {
-            command::add_issue(location, order, issue, &profile.config)?;
+            command::add_issue(location, order, issue, &config)?;
         },
         Command::List(List {
             max_steps,
@@ -49,10 +43,8 @@ fn main() -> anyhow::Result<()> {
             location,
             project_location,
         }) => {
-            profile
-                .config
-                .update_display_project(display.compact, display.pretty, max_steps);
-            command::list(location, project_location, &profile.config)?;
+            config.update_display_project(display.compact, display.pretty, max_steps);
+            command::list(location, project_location, &config)?;
         },
         Command::Tree(Tree {
             max_steps,
@@ -60,10 +52,8 @@ fn main() -> anyhow::Result<()> {
             location,
             project_location,
         }) => {
-            profile
-                .config
-                .update_display_project(display.compact, display.pretty, max_steps);
-            command::tree(location, project_location, &profile.config)?;
+            config.update_display_project(display.compact, display.pretty, max_steps);
+            command::tree(location, project_location, &config)?;
         },
     }
 

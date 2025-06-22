@@ -1,15 +1,16 @@
 use std::borrow::Cow;
-use std::env;
 use std::path::{Path, PathBuf};
 
 pub use config::ConfigError;
-use config::{Environment, File};
+use config::builder::DefaultState;
+use config::{ConfigBuilder, Environment};
+use config_load::{ConfigLoader, FileLocation, Load};
 use indexmap::{IndexMap, IndexSet};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use todo_tracker_fs::config::{DeserializedId, FsProjectConfig};
-use todo_tracker_fs::file::{find_by_name_part, find_in_dir_and_parents};
 use todo_tracker_fs::Placement;
+use todo_tracker_fs::config::{DeserializedId, FsProjectConfig};
+use todo_tracker_fs::file::find_by_name_part;
 
 use crate::issue::Order;
 
@@ -397,6 +398,9 @@ impl WorkingMode {
     }
 }
 
+pub const DEFAULT_CONFIG_FILE_NAME: &str = "todo.toml";
+pub const ROOT_CONFIG_ENV_KEY: &str = "TODO_ROOT_CONFIG";
+
 #[derive(Debug, Default, Deserialize, Serialize)]
 #[serde(default)]
 pub struct Config {
@@ -435,38 +439,26 @@ impl Config {
             self.display.project.compact = force_compact && !force_pretty;
         }
     }
+
+    pub fn load(config_file: Option<PathBuf>) -> config_load::Result<Self> {
+        ConfigLoader::default()
+            .add(
+                FileLocation::first_some_path()
+                    .from_env(ROOT_CONFIG_ENV_KEY)
+                    .from_home_exists(Path::new(".todo").join(DEFAULT_CONFIG_FILE_NAME)),
+            )
+            .exclude_not_exists()
+            .add(
+                FileLocation::first_some_path()
+                    .from_file(config_file)
+                    .from_cwd_and_parents_exists(DEFAULT_CONFIG_FILE_NAME),
+            )
+            .load()
+    }
 }
 
-#[derive(Debug, Default)]
-pub struct ConfigBuilder {
-    config_paths: Vec<PathBuf>,
-}
-
-impl ConfigBuilder {
-    pub fn with_path(mut self, path: impl Into<PathBuf>) -> Self {
-        self.add_path(path);
-        self
-    }
-
-    pub fn with_paths(mut self, paths: impl Into<Vec<PathBuf>>) -> Self {
-        self.set_paths(paths);
-        self
-    }
-
-    pub fn add_path(&mut self, path: impl Into<PathBuf>) {
-        self.config_paths.push(path.into());
-    }
-
-    pub fn set_paths(&mut self, paths: impl Into<Vec<PathBuf>>) {
-        self.config_paths = paths.into();
-    }
-
-    pub fn build(self) -> Result<Config, ConfigError> {
-        let mut config_builder = config::Config::builder();
-        for path in &self.config_paths {
-            config_builder = config_builder.add_source(File::from(path.as_path()))
-        }
-
+impl Load for Config {
+    fn load(config_builder: ConfigBuilder<DefaultState>) -> config_load::Result<Self> {
         // Add in settings from the environment (with a prefix of TODO)
         // Eg. `TODO_CONFIG_HTTP_PORT=8090 ` would set the `http.port` param
         let config = config_builder
@@ -474,96 +466,4 @@ impl ConfigBuilder {
             .build()?;
         config.try_deserialize()
     }
-}
-
-pub const DEFAULT_CONFIG_FILE_NAME: &str = "todo.toml";
-pub const ROOT_CONFIG_ENV_KEY: &str = "TODO_ROOT_CONFIG";
-
-#[derive(Debug)]
-pub struct ConfigLoader {
-    config_file_name: String,
-    root_config_file: PathBuf,
-    config_file: Option<PathBuf>,
-}
-
-impl Default for ConfigLoader {
-    fn default() -> Self {
-        let root_config_file = env::var(ROOT_CONFIG_ENV_KEY).map(Into::into).unwrap_or_else(|_| {
-            home::home_dir()
-                .unwrap_or_default()
-                .join(".todo")
-                .join(DEFAULT_CONFIG_FILE_NAME)
-        });
-
-        Self {
-            config_file_name: DEFAULT_CONFIG_FILE_NAME.into(),
-            root_config_file,
-            config_file: None,
-        }
-    }
-}
-
-impl ConfigLoader {
-    pub fn with_config_file_name(mut self, config_file_name: impl Into<String>) -> Self {
-        self.config_file_name = config_file_name.into();
-        self
-    }
-
-    pub fn with_root_config_file(mut self, default_root_config_file: impl Into<PathBuf>) -> Self {
-        self.root_config_file = default_root_config_file.into();
-        self
-    }
-
-    pub fn with_config_file(mut self, config_file: impl Into<PathBuf>) -> Self {
-        self.config_file = Some(config_file.into());
-        self
-    }
-
-    pub fn maybe_with_config_file(mut self, config_file: Option<impl Into<PathBuf>>) -> Self {
-        self.config_file = config_file.map(Into::into);
-        self
-    }
-
-    pub fn config_file_name(&self) -> &str {
-        &self.config_file_name
-    }
-
-    pub fn root_config_file(&self) -> &Path {
-        self.root_config_file.as_path()
-    }
-
-    pub fn load(self) -> anyhow::Result<ConfigProfile> {
-        let Self {
-            config_file_name,
-            root_config_file,
-            config_file,
-        } = self;
-
-        let mut config_builder = ConfigBuilder::default();
-
-        if root_config_file.exists() {
-            config_builder.add_path(&root_config_file);
-        }
-
-        let config_dir = env::current_dir()?;
-        let config_file = config_file
-            .or_else(|| find_in_dir_and_parents(&config_dir, &config_file_name))
-            .unwrap_or_else(|| config_dir.join(&config_file_name));
-
-        if config_file.exists() {
-            config_builder.add_path(&config_file);
-        }
-
-        Ok(ConfigProfile {
-            config: config_builder.build()?,
-            root_config_file,
-            config_file,
-        })
-    }
-}
-
-pub struct ConfigProfile {
-    pub config: Config,
-    pub root_config_file: PathBuf,
-    pub config_file: PathBuf,
 }
