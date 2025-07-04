@@ -218,13 +218,10 @@ impl TestCase {
         // e.g., `/private/var/folders/...`, which causes mismatch with expected output
         // defined as `/var/folders/...`. To ensure cross-platform consistency,
         // we normalize such paths in test output comparison.
-        let normalize_path = |s: &str| s.replace("/private/var/", "/var/");
-
-        let normalized_output = normalize_path(output);
-        let normalized_expected = normalize_path(&expected_output);
+        let normalized_output = output.replace("/private/var/", "/var/");
 
         assert_eq!(
-            normalized_output, normalized_expected,
+            normalized_output, expected_output,
             "Command `{command}` in source {source_path}:{source_line}"
         );
     }
