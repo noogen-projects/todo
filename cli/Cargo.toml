@@ -17,6 +17,7 @@ todo-lib = { path = "../lib" }
 todo-tracker-fs = { path = "../tracker-fs" }
 
 [dev-dependencies]
+md-cli-test = "0.1"
 assert_cmd = "2.0"
 pulldown-cmark = "0.13"
 regex = { workspace = true }
